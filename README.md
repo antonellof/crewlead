@@ -1,22 +1,36 @@
-# crewlead
+<p align="center">
+  <img src="docs/images/logo.svg" width="120" alt="crewlead logo">
+</p>
 
-One lead model plans and reviews. Cheap workers write the code in parallel.
+<h1 align="center">crewlead</h1>
 
-A crew lead reads the plans and gives the orders, and the crew does the building. This project does the same with LLMs. Your expensive model (Claude, GPT, anything) stays in your coding agent as the lead. Light worker models, local or remote, do the typing and the retries.
+<p align="center">
+  <strong>One lead model plans and reviews. Cheap workers write the code in parallel.</strong><br>
+  For Claude Code, Codex and Pi. Workers run on your Mac, your GPU box or any OpenAI-compatible API.
+</p>
 
-Works with **Claude Code** (plugin), **Codex** (MCP server) and **Pi** (native extension). Zero npm dependencies. Node 20.3 or newer.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D20.3-339933" alt="Node 20.3 or newer">
+  <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="zero dependencies">
+  <img src="https://img.shields.io/badge/hosts-Claude%20Code%20%7C%20Codex%20%7C%20Pi-8a63d2" alt="Claude Code, Codex, Pi">
+</p>
 
-```
- Claude Code / Codex / Pi  (lead: plans, splits, reviews)
-            |
-            |  delegate_batch([task A, task B, task C])
-            v
-       crewlead pool  (concurrency cap per provider, fallback)
-        |        |        |
-     worker A  worker B  worker C     each: read -> edit -> run -> verify -> retry
-        |        |        |
-   llama.cpp / Ollama / LM Studio / vLLM / OpenRouter / any OpenAI-compatible API
-```
+<p align="center">
+  <a href="#quick-start-with-claude-code">Quick start</a> &middot;
+  <a href="#example-a-pop-up-book-film">Example</a> &middot;
+  <a href="#example-prompts">Prompts</a> &middot;
+  <a href="#setup-recipes">Setup recipes</a> &middot;
+  <a href="#tools-the-lead-gets">Tools</a> &middot;
+  <a href="#configuration">Configuration</a> &middot;
+  <a href="docs/testing.md">Test report</a>
+</p>
+
+A crew lead reads the plans and gives the orders, and the crew does the building. Crewlead does the same with LLMs. Your expensive model stays in your coding agent as the lead. Light worker models, local or remote, do the typing and the retries.
+
+<p align="center">
+  <img src="docs/images/architecture.svg" width="820" alt="The lead model sends delegate_batch to the crewlead pool, which runs workers A, B and C on any OpenAI-compatible endpoint and returns short reports, changed files and verify results.">
+</p>
 
 ## Why
 
@@ -28,17 +42,21 @@ The lead model is the expensive part of an agent run. Most of its output tokens 
 
 ## Example: a pop-up book film
 
-The same prompt ([`bench/popup-book`](bench/popup-book/prompt.md)) built twice in Claude Code with Fable 5.2 as the lead. Left: Fable writes every file. Right: Fable plans and reviews in boss mode, three Qwen 3.8 27B workers on a local llama.cpp server write every file.
+The same prompt ([`bench/popup-book`](bench/popup-book/prompt.md)) built in Claude Code with Fable 5.2 as the lead. Left: Fable writes every file. Right: Fable plans and reviews in boss mode, and three Qwen 3.8 27B workers on a local llama.cpp server write every file.
 
 | Fable alone | Fable + 3 local Qwen workers |
 | --- | --- |
-| <img src="docs/images/popup-book/solo-t0002.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0002.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0008.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0008.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0014.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0014.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0020.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0020.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0026.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0026.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0002.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0002.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0008.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0008.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0014.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0014.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0020.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0020.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0026.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0026.jpg" width="400"> |
 
-One run each, so a data point and not a benchmark. Time, cost, the round by round worker results and the bugs this run found are in [docs/testing.md](docs/testing.md#6-pop-up-book-film-lead-alone-vs-lead-plus-workers).
+<p align="center">
+  <img src="docs/images/popup-book-results.svg" width="820" alt="Lead output tokens in thousands: Fable alone 84.2, crew run 1 41.9, crew run 2 62.8. Wall time in minutes: 14.5, 57.5, 38.5.">
+</p>
+
+With workers the lead wrote no file and produced fewer output tokens, but the whole run took longer. One run each, so data points and not a benchmark. Token counts are as the API reports them; there are no dollar figures because these runs were not billed per run. Rounds, worker results and the bugs these runs found: [docs/testing.md](docs/testing.md#6-pop-up-book-film-lead-alone-vs-lead-plus-workers).
 
 ## Quick start with Claude Code
 
