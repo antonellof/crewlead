@@ -529,3 +529,59 @@ test("setup: recognises an mlx-vlm server and skips its unloaded drafter", async
   assert.equal(cfg.workers.builder.model, "someone/Qwen3.8-27B-MLX-8bit");
   assert.deepEqual(cfg.workers.builder.extraBody, { chat_template_kwargs: { enable_thinking: false } });
 });
+
+test("a request that uses up requestTimeoutMs fails once, without retries", async () => {
+  let requests = 0;
+  const server = createServer((req, res) => {
+    requests++;
+    setTimeout(() => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ choices: [{ message: say("late") }] }));
+    }, 1500);
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${server.address().port}/v1`;
+  const r = await new Pool({ config: config(url, { builder: { requestTimeoutMs: 300 } }), cwd: tmp(), env: {} }).delegate({ id: "t", task: "x" });
+  server.closeAllConnections();
+  server.close();
+  assert.equal(r.status, "error");
+  assert.match(r.report, /did not answer within 0 s|did not answer within/);
+  assert.equal(requests, 1);
+});
+
+test("a slow but successful response is not cut off by the HTTP client", async () => {
+  const llm = await mockLLM(() => say("done"));
+  const slow = createServer((req, res) => {
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => setTimeout(() => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ choices: [{ message: say("finished after a long wait") }], usage: { prompt_tokens: 1, completion_tokens: 1 } }));
+    }, 1200));
+  });
+  await new Promise((r) => slow.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${slow.address().port}/v1`;
+  const r = await new Pool({ config: config(url, { builder: { requestTimeoutMs: 5000 } }), cwd: tmp(), env: {} }).delegate({ id: "t", task: "x" });
+  slow.close();
+  llm.close();
+  assert.equal(r.status, "done");
+  assert.equal(r.report, "finished after a long wait");
+});
+
+test("run cap: after three refusals in a row the run tool is removed", async () => {
+  const toolLists = [];
+  const llm = await mockLLM((body) => {
+    const names = (body.tools ?? []).map((t) => t.function.name);
+    toolLists.push(names);
+    if (!names.includes("run")) return say("reported without run");
+    return call("run", { command: "echo again" });
+  });
+  const r = await new Pool({ config: config(llm.url, { builder: { maxRunsWithoutChange: 2, maxSteps: 20 } }), cwd: tmp(), env: {} }).delegate({ id: "t", task: "x" });
+  llm.close();
+  assert.equal(r.status, "done");
+  assert.equal(r.report, "reported without run");
+  assert.equal(r.toolCalls.run, 5);
+  assert.equal(r.toolCalls.run_refused, 3);
+  assert.ok(toolLists.at(-1).includes("write_file"), "the file tools stay");
+  assert.ok(!toolLists.at(-1).includes("run"));
+});

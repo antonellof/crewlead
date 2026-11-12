@@ -45,6 +45,8 @@ export async function runWorker({ task, worker, provider, cwd, signal, env, onEv
   let runsSinceChange = 0;
   let lastCommand = null;
   let sameCommand = 0;
+  let refusedInARow = 0;
+  const noRun = TOOL_SCHEMAS.filter((t) => t.function.name !== "run");
 
   while (steps < worker.maxSteps) {
     steps++;
@@ -62,7 +64,10 @@ export async function runWorker({ task, worker, provider, cwd, signal, env, onEv
 
     let res;
     try {
-      res = await chat({ provider, worker, messages, tools: TOOL_SCHEMAS, signal, env });
+      // A worker that keeps calling run after being refused loses the tool
+      // until it changes a file.
+      const tools = refusedInARow >= 3 ? noRun : TOOL_SCHEMAS;
+      res = await chat({ provider, worker, messages, tools, signal, env });
     } catch (err) {
       if (!(err instanceof ContextOverflowError)) throw err;
       onEvent({ type: "compact", id: task.id });
@@ -93,12 +98,15 @@ export async function runWorker({ task, worker, provider, cwd, signal, env, onEv
         let output;
         if (name === "run" && runCap > 0 && runsSinceChange >= runCap) {
           toolCalls.run_refused = (toolCalls.run_refused ?? 0) + 1;
+          refusedInARow++;
           output = `refused: you ran ${runsSinceChange} commands since your last file change. ` +
-            "No more commands until you change a file. If the work is done, stop calling tools and give your report.";
+            "No more commands until you change a file. If the work is done, stop calling tools and give your report." +
+            (refusedInARow >= 3 ? " The run tool is now removed until you change a file." : "");
         } else {
           output = await toolbox.call(name, args);
           if ((name === "write_file" || name === "edit_file") && /^(wrote|edited) /.test(output)) {
             runsSinceChange = 0;
+            refusedInARow = 0;
             lastCommand = null;
             sameCommand = 0;
           } else if (name === "run" && runCap > 0) {
