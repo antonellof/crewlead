@@ -58,6 +58,66 @@ Then ask for work as usual. The lead splits it, hands it to the workers with `de
 
 **Long batches.** If workers get cut off, start Claude Code with `MCP_TOOL_TIMEOUT=1800000`.
 
+## Example prompts
+
+Type these to the lead (Claude Code, Codex or Pi). The lead plans, the workers write.
+
+Set up or inspect the workers:
+
+```
+set up crewlead
+which crewlead workers do I have, and are they working?
+```
+
+Build something new in parallel:
+
+```
+Build a todo CLI in Node with no dependencies: storage in src/store.js, argument parsing
+in src/args.js, commands in src/cli.js, a node:test file per module. Use crewlead workers,
+one per module, and make npm test pass.
+```
+
+Add tests to an existing project:
+
+```
+Write node:test tests for every module in src/ that has none. One crewlead worker per
+module, each verified by running its own test file.
+```
+
+Refactor:
+
+```
+Split src/server.js into src/routes/, src/middleware/ and src/db/. Write the interface
+contract first, then delegate one directory per worker with a node --check verify.
+Run the full test suite at the end.
+```
+
+Fix a failing test:
+
+```
+test/parser.test.js fails. Find the cause, then have a worker fix it, verified with npm test.
+```
+
+Something bigger, the prompt used in [`bench/popup-book`](bench/popup-book/prompt.md):
+
+```
+Build a 30-second film in Three.js: a paper book opens and four pop-up worlds fold out of
+it, a castle, a jungle, a port with boats and snowy peaks. Plain ES modules, no build step.
+```
+
+Choose where the work runs:
+
+```
+Use the builder-remote worker for this batch, the local server is busy.
+```
+
+Tips:
+
+- **One file per task.** Small tasks with a clear file and a verify command pass on the first try far more often than broad ones like "build the book and the paper system".
+- **Name the files and the functions.** The worker knows nothing about your conversation. The lead writes this for you, but the more exact your prompt, the better its contract.
+- **Ask for a verify command.** `node --test test/x.test.js`, `node --check src/x.js`, a type check or a lint run. A failing check goes back to the worker, which retries for free on a local model.
+- **Turn on boss mode** when you want to be sure the lead never writes code itself.
+
 ## Other ways to install
 
 ### Claude Code, MCP server only
@@ -215,7 +275,7 @@ Qwen 3.8 thinks before every answer by default, which makes builders slow. `setu
 
 ## Status
 
-Version 0.1. The test suite (`npm test`) runs the worker loop, the pool, the fallback path, setup, the MCP server and the boss hooks against a mock OpenAI-compatible server. Smoke tested with Qwen 3.8 27B on llama.cpp as the worker and Claude Code as the host. Not yet tested in real Codex or Pi sessions, or with a live OpenRouter fallback. There is no benchmark yet, so there are no cost or speed numbers here.
+Version 0.1. The test suite (`npm test`) runs the worker loop, the pool, the fallback path, setup, the MCP server and the boss hooks against a mock OpenAI-compatible server. Smoke tested with Qwen 3.8 27B on llama.cpp as the worker and Claude Code as the host. Not yet tested in real Codex or Pi sessions, or with a live OpenRouter fallback. What was run and what broke is in [docs/testing.md](docs/testing.md). One benchmark task exists ([bench/](bench/)), with one run per arm so far, so there are no cost or speed claims here.
 
 Planned: git worktree isolation per worker, async dispatch with polling for hosts with short tool timeouts, a run log with per-task cost, headless Pi as an alternative worker runtime.
 
