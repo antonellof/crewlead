@@ -26,93 +26,65 @@ The lead model is the expensive part of an agent run. Most of its output tokens 
 - Each worker runs its own agent loop and only returns a summary, the changed files and a test result.
 - A failed check is fed back to the worker, which retries on its own. On a local model those retries cost nothing.
 
-## Workers: local, remote, or both
+## Quick start with Claude Code
 
-A worker is a profile in a config file: a provider (any OpenAI-compatible endpoint) plus a model. Mix local and remote freely.
+**1. Start a worker model.** Any OpenAI-compatible server with tool calling works. On a Mac with llama.cpp:
 
-```json
-{
-  "providers": {
-    "local": {
-      "baseUrl": "http://127.0.0.1:8080/v1",
-      "maxConcurrency": 3
-    },
-    "openrouter": {
-      "baseUrl": "https://openrouter.ai/api/v1",
-      "apiKeyEnv": "OPENROUTER_API_KEY",
-      "maxConcurrency": 8
-    }
-  },
-  "workers": {
-    "builder": {
-      "provider": "local",
-      "model": "qwen3.8-27b",
-      "fallback": "builder-remote"
-    },
-    "builder-remote": {
-      "provider": "openrouter",
-      "model": "qwen/qwen3.8-27b"
-    }
-  },
-  "defaultWorker": "builder"
-}
+```
+brew install llama.cpp
+llama-server -hf unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL --jinja -c 196608 -np 3 --port 8080
 ```
 
-With this file, tasks go to the local server, three at a time. If the local server is down, each task moves to OpenRouter. The lead can also pick a profile per task with `"worker": "builder-remote"`.
+The first start downloads the model (about 17 GB). Ollama, LM Studio and vLLM work too. For remote workers instead, or as a fallback, export `OPENROUTER_API_KEY` in the shell that starts Claude Code.
 
-Create the file with `crewlead init`. Lookup order:
-
-1. `$CREWLEAD_CONFIG`
-2. `./crewlead.config.json`
-3. `./.crewlead/config.json`
-4. `~/.config/crewlead/config.json`
-
-No file at all? Crewlead uses Ollama at `127.0.0.1:11434` with `qwen3.8:27b`. Or set one endpoint with environment variables: `CREWLEAD_BASE_URL`, `CREWLEAD_MODEL`, `CREWLEAD_API_KEY`, `CREWLEAD_MAX_CONCURRENCY`.
-
-### Provider options
-
-| Field | Meaning |
-| --- | --- |
-| `baseUrl` | OpenAI-compatible base URL, ending in `/v1` |
-| `apiKeyEnv` | Name of the environment variable holding the key. Keep keys out of the file. |
-| `maxConcurrency` | Max parallel workers on this provider. Match it to your server's parallel slots. Default 2. |
-| `headers` | Extra HTTP headers, for example OpenRouter's `HTTP-Referer` and `X-Title` |
-
-### Worker options
-
-| Field | Default | Meaning |
-| --- | --- | --- |
-| `provider`, `model` | required | Where the worker runs |
-| `fallback` | none | Worker profile to use when this provider is unreachable or rejects the key |
-| `temperature` | 0.2 | |
-| `maxSteps` | 40 | Max model turns per task |
-| `maxTokens` | 8192 | Max output tokens per turn |
-| `verifyRetries` | 3 | Extra attempts after a failed verify command |
-| `allowShell` | true | Set false to remove the `run` tool |
-| `inputPricePerM`, `outputPricePerM` | none | USD per million tokens, for the cost report when the API does not return a cost |
-| `extraBody` | none | Extra fields merged into the request, for example `{"reasoning": {"effort": "low"}}` |
-| `systemPrompt` | built in | Replace the worker's system prompt |
-
-Check your setup with `crewlead doctor`. It sends one request per worker and tells you if the model supports tool calling. A model without tool calling cannot edit files.
-
-## Install
-
-### Claude Code
+**2. Install the plugin.** In Claude Code:
 
 ```
 /plugin marketplace add antonellof/crewlead
 /plugin install crewlead@crewlead
 ```
 
-The plugin registers three things: the MCP server, a skill that teaches the lead how to delegate, and a hook for boss mode.
+**3. Ask Claude to set it up.** In your project:
 
-Long batches can exceed the default MCP tool timeout. Start Claude Code with `MCP_TOOL_TIMEOUT=1800000` if workers get cut off.
+```
+> set up crewlead
+```
 
-**Boss mode.** Run `crewlead boss on` in a project (or set `CREWLEAD_BOSS=1`). The hook then blocks `Edit` and `Write` for the lead, so every change has to go through a worker. `crewlead boss off` turns it off.
+The `setup` tool finds the local servers on their default ports (llama.cpp 8080, Ollama 11434, LM Studio 1234, vLLM 8000), reads the model and the number of parallel slots, checks which API key variables are set, writes `crewlead.config.json` and sends a tool-calling test to every worker. API keys are never written to the file.
+
+Then ask for work as usual. The lead splits it, hands it to the workers with `delegate_batch`, and reviews what comes back.
+
+**Boss mode (optional).** Run `npx -y github:antonellof/crewlead boss on` in the project, or set `CREWLEAD_BOSS=1`. From then on each prompt reminds the lead to delegate, and `Edit` and `Write` are blocked for it, so every change goes through a worker. `boss off` turns it off.
+
+**Long batches.** If workers get cut off, start Claude Code with `MCP_TOOL_TIMEOUT=1800000`.
+
+## Other ways to install
+
+### Claude Code, MCP server only
+
+The tools without the skill and the boss mode hooks:
+
+```
+claude mcp add crewlead -- npx -y github:antonellof/crewlead mcp
+```
+
+Add `--scope user` for every project. `claude mcp list` should show `crewlead ... Connected`.
+
+From a terminal, the plugin install is `claude plugin marketplace add antonellof/crewlead` then `claude plugin install crewlead@crewlead`. From a local clone, pass the path to `marketplace add`, or try it for one session with `claude --plugin-dir /path/to/crewlead`.
 
 ### Codex
 
-Clone the repo, then add the block from [`codex/config.example.toml`](codex/config.example.toml) to `~/.codex/config.toml`. Paste [`codex/AGENTS.snippet.md`](codex/AGENTS.snippet.md) into your `AGENTS.md` so the lead knows how to delegate.
+In `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.crewlead]
+command = "npx"
+args = ["-y", "github:antonellof/crewlead", "mcp"]
+startup_timeout_sec = 30
+tool_timeout_sec = 1800
+```
+
+Paste [`codex/AGENTS.snippet.md`](codex/AGENTS.snippet.md) into your `AGENTS.md` so the lead knows how to delegate. Not yet tested in a real Codex session.
 
 ### Pi
 
@@ -120,16 +92,17 @@ Clone the repo, then add the block from [`codex/config.example.toml`](codex/conf
 pi install git:github.com/antonellof/crewlead
 ```
 
-The extension registers `delegate`, `delegate_batch` and `list_workers` as native tools, plus a `/workers` command. No MCP involved.
+The extension registers the same tools natively, plus a `/workers` command. No MCP involved. Not yet tested in a real Pi session.
 
-### Standalone
+### Command line
 
 ```
-git clone https://github.com/antonellof/crewlead && cd crewlead
-node bin/crewlead.js init
-node bin/crewlead.js doctor
-node bin/crewlead.js run "Create fizzbuzz.js and a node:test file for it" --verify "node --test"
+npx -y github:antonellof/crewlead init      # find local servers, write crewlead.config.json
+npx -y github:antonellof/crewlead doctor    # test every worker
+npx -y github:antonellof/crewlead run "Create fizzbuzz.js and a node:test file for it" --verify "node --test"
 ```
+
+`init --user` writes `~/.config/crewlead/config.json` for every project. `init --url http://host:port/v1` probes a server on another port.
 
 ## Tools the lead gets
 
@@ -166,15 +139,71 @@ A result looks like this:
 
 **`list_workers`** shows the configured profiles. It never returns keys.
 
+**`setup`** configures crewlead: `detect` finds servers and suggests a config, `write` writes it (project or user scope, never overwriting unless asked, never with inline keys), `check` tests every worker.
+
+## Configuration
+
+`setup` and `init` write this file for you. Edit it to add workers or change limits.
+
+A worker is a provider (any OpenAI-compatible endpoint) plus a model. Mix local and remote freely:
+
+```json
+{
+  "providers": {
+    "local": { "baseUrl": "http://127.0.0.1:8080/v1", "maxConcurrency": 3 },
+    "openrouter": { "baseUrl": "https://openrouter.ai/api/v1", "apiKeyEnv": "OPENROUTER_API_KEY", "maxConcurrency": 8 }
+  },
+  "workers": {
+    "builder": { "provider": "local", "model": "qwen3.8-27b", "fallback": "builder-remote" },
+    "builder-remote": { "provider": "openrouter", "model": "qwen/qwen3.8-27b" }
+  },
+  "defaultWorker": "builder"
+}
+```
+
+Tasks go to the local server, three at a time. If it is down, each task moves to OpenRouter. The lead can also pick a profile per task with `"worker": "builder-remote"`.
+
+Lookup order: `$CREWLEAD_CONFIG`, `./crewlead.config.json`, `./.crewlead/config.json`, `~/.config/crewlead/config.json`. With no file, crewlead uses Ollama at `127.0.0.1:11434` with `qwen3.8:27b`, or one endpoint from `CREWLEAD_BASE_URL`, `CREWLEAD_MODEL`, `CREWLEAD_API_KEY` and `CREWLEAD_MAX_CONCURRENCY`.
+
+### Provider options
+
+| Field | Meaning |
+| --- | --- |
+| `baseUrl` | OpenAI-compatible base URL, ending in `/v1` |
+| `apiKeyEnv` | Name of the environment variable holding the key. Keep keys out of the file. |
+| `maxConcurrency` | Max parallel workers on this provider. Match it to your server's parallel slots. Default 2. |
+| `headers` | Extra HTTP headers, for example OpenRouter's `HTTP-Referer` and `X-Title` |
+
+### Worker options
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `provider`, `model` | required | Where the worker runs |
+| `fallback` | none | Worker profile to use when this provider is unreachable or rejects the key |
+| `temperature` | 0.2 | |
+| `maxSteps` | 40 | Max model turns per task |
+| `maxTokens` | 8192 | Max output tokens per turn |
+| `verifyRetries` | 3 | Extra attempts after a failed verify command |
+| `allowShell` | true | Set false to remove the `run` tool |
+| `inputPricePerM`, `outputPricePerM` | none | USD per million tokens, for the cost report when the API does not return a cost |
+| `extraBody` | none | Extra fields merged into the request, for example `{"reasoning": {"effort": "low"}}` |
+| `systemPrompt` | built in | Replace the worker's system prompt |
+
 ## Running local workers
 
 Serve one model with several parallel slots. All workers then share one copy of the weights.
 
 ```
-llama-server -m qwen3.8-27b-Q4_K_M.gguf --jinja -c 196608 -np 3 --port 8080
+llama-server -hf unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL --jinja -c 196608 -np 3 --port 8080
 ```
 
-`-np 3` gives three slots and splits the context between them, so size `-c` for three workers. Set the provider's `maxConcurrency` to the same number. The model must support tool calling through the chat template (`--jinja` in llama.cpp).
+`-np 3` gives three slots and splits the context between them, so size `-c` for three workers. Set the provider's `maxConcurrency` to the same number (`setup` reads it from llama.cpp). The model must support tool calling through the chat template (`--jinja` in llama.cpp).
+
+Qwen 3.8 thinks before every answer by default, which makes builders slow. `setup` turns it off for Qwen 3 models; by hand it is:
+
+```json
+"extraBody": { "chat_template_kwargs": { "enable_thinking": false } }
+```
 
 ## Safety
 
@@ -186,7 +215,7 @@ llama-server -m qwen3.8-27b-Q4_K_M.gguf --jinja -c 196608 -np 3 --port 8080
 
 ## Status
 
-Version 0.1. The test suite (`npm test`) runs the worker loop, the pool, the fallback path, the MCP server and the boss hook against a mock OpenAI-compatible server. It has not been benchmarked against real models yet, so there are no cost or speed numbers here.
+Version 0.1. The test suite (`npm test`) runs the worker loop, the pool, the fallback path, setup, the MCP server and the boss hooks against a mock OpenAI-compatible server. Smoke tested with Qwen 3.8 27B on llama.cpp as the worker and Claude Code as the host. Not yet tested in real Codex or Pi sessions, or with a live OpenRouter fallback. There is no benchmark yet, so there are no cost or speed numbers here.
 
 Planned: git worktree isolation per worker, async dispatch with polling for hosts with short tool timeouts, a run log with per-task cost, headless Pi as an alternative worker runtime.
 

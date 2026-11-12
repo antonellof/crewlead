@@ -11,6 +11,6 @@ startup_timeout_sec = 30
 tool_timeout_sec = 1800
 
 # Workers come from crewlead.config.json in the project, or from
-# ~/.config/crewlead/config.json. Keys for remote providers go here:
-[mcp_servers.crewlead.env]
-OPENROUTER_API_KEY = "sk-or-..."
+# ~/.config/crewlead/config.json. Keys for remote providers stay in your
+# shell environment (for example export OPENROUTER_API_KEY in ~/.zshrc).
+# Do not write keys into this file.
