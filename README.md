@@ -2,7 +2,7 @@
   <img src="docs/images/logo.svg" width="120" alt="crewlead logo">
 </p>
 
-<h1 align="center">crewlead</h1>
+<h1 align="center">Crewlead MCP</h1>
 
 <p align="center">
   <strong>One lead model plans and reviews. Cheap workers write the code in parallel.</strong><br>
