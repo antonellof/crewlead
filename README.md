@@ -54,7 +54,7 @@ The same prompt ([`bench/popup-book`](bench/popup-book/prompt.md)) built in Clau
 | <img src="docs/images/popup-book/solo-t0026.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0026.jpg" width="400"> |
 
 <p align="center">
-  <img src="docs/images/popup-book-results.svg" width="820" alt="Lead output tokens in thousands: Fable alone 84.2, crew run 1 41.9, crew run 2 62.8. Wall time in minutes: 14.5, 57.5, 38.5.">
+  <img src="docs/images/popup-book-results.svg" width="820" alt="Lead output tokens in thousands: Fable alone 84.2, crew run 1 41.9, crew run 2 62.8, crew run 3 40.2. Wall time in minutes: 14.5, 57.5, 38.5, 76.2.">
 </p>
 
 With workers the lead wrote no file and produced fewer output tokens, but the whole run took longer. One run each, so data points and not a benchmark. Token counts are as the API reports them; there are no dollar figures because these runs were not billed per run. Rounds, worker results and the bugs these runs found: [docs/testing.md](docs/testing.md#6-pop-up-book-film-lead-alone-vs-lead-plus-workers).
