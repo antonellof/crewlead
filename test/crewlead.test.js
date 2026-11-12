@@ -467,3 +467,43 @@ test("every example config is valid and keeps keys out of the file", async () =>
     assert.doesNotThrow(() => normalize(JSON.parse(readFileSync(join(root, f), "utf8")), {}), f);
   }
 });
+
+test("run cap: nudges halfway and on repeats, then refuses run until a file changes", async () => {
+  const outputs = [];
+  const llm = await mockLLM((body) => {
+    const last = body.messages.at(-1);
+    if (last.role === "tool") outputs.push(last.content);
+    if (last.role === "tool" && last.content.startsWith("refused")) return say("done, the file was already written");
+    return call("run", { command: "echo checking" });
+  });
+  const r = await new Pool({ config: config(llm.url, { builder: { maxRunsWithoutChange: 4, maxSteps: 20 } }), cwd: tmp(), env: {} }).delegate({ id: "t", task: "x" });
+  llm.close();
+  assert.equal(r.status, "done");
+  assert.equal(r.toolCalls.run, 5);
+  assert.equal(r.toolCalls.run_refused, 1);
+  assert.doesNotMatch(outputs[0], /crewlead:/);
+  assert.match(outputs[1], /ran 2 commands since your last file change/);
+  assert.match(outputs[2], /exact command 3 times in a row/);
+  assert.match(outputs[4], /^refused: you ran 4 commands/);
+});
+
+test("run cap: a file change resets the count, and 0 turns the cap off", async () => {
+  const script = (body) => {
+    const n = toolTurns(body);
+    if (n === 3) return call("write_file", { path: "a.js", content: "x" });
+    if (n < 7) return call("run", { command: `echo ${n}` });
+    return say("done");
+  };
+  for (const cap of [3, 0]) {
+    const outputs = [];
+    const llm = await mockLLM((body) => {
+      if (body.messages.at(-1).role === "tool") outputs.push(body.messages.at(-1).content);
+      return script(body);
+    });
+    const r = await new Pool({ config: config(llm.url, { builder: { maxRunsWithoutChange: cap } }), cwd: tmp(), env: {} }).delegate({ id: "t", task: "x" });
+    llm.close();
+    assert.equal(r.status, "done");
+    assert.equal(r.toolCalls.run_refused, undefined, `cap ${cap}: nothing refused`);
+    if (cap === 0) assert.ok(outputs.every((o) => !o.includes("crewlead:")));
+  }
+});

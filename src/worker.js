@@ -39,6 +39,12 @@ export async function runWorker({ task, worker, provider, cwd, signal, env, onEv
   let warned = false;
   let lastCall = null;
   const toolCalls = {};
+  // Workers on small models tend to keep running commands after the work is
+  // done. Count shell calls since the last file change and push back.
+  const runCap = worker.maxRunsWithoutChange ?? 12;
+  let runsSinceChange = 0;
+  let lastCommand = null;
+  let sameCommand = 0;
 
   while (steps < worker.maxSteps) {
     steps++;
@@ -83,8 +89,31 @@ export async function runWorker({ task, worker, provider, cwd, signal, env, onEv
         const name = call.function?.name;
         onEvent({ type: "tool", id: task.id, name });
         toolCalls[name] = (toolCalls[name] ?? 0) + 1;
-        const output = await toolbox.call(name, call.function?.arguments);
-        lastCall = { name, arguments: call.function?.arguments ?? "", output };
+        const args = call.function?.arguments ?? "";
+        let output;
+        if (name === "run" && runCap > 0 && runsSinceChange >= runCap) {
+          toolCalls.run_refused = (toolCalls.run_refused ?? 0) + 1;
+          output = `refused: you ran ${runsSinceChange} commands since your last file change. ` +
+            "No more commands until you change a file. If the work is done, stop calling tools and give your report.";
+        } else {
+          output = await toolbox.call(name, args);
+          if ((name === "write_file" || name === "edit_file") && /^(wrote|edited) /.test(output)) {
+            runsSinceChange = 0;
+            lastCommand = null;
+            sameCommand = 0;
+          } else if (name === "run" && runCap > 0) {
+            runsSinceChange++;
+            sameCommand = args === lastCommand ? sameCommand + 1 : 1;
+            lastCommand = args;
+            const notes = [];
+            if (sameCommand >= 3) notes.push(`You ran this exact command ${sameCommand} times in a row.`);
+            if (runsSinceChange === Math.ceil(runCap / 2)) {
+              notes.push(`You ran ${runsSinceChange} commands since your last file change. After ${runCap}, commands are refused until you change a file.`);
+            }
+            if (notes.length) output += `\n\n[crewlead: ${notes.join(" ")} If the work is done, stop calling tools and give your report.]`;
+          }
+        }
+        lastCall = { name, arguments: args, output };
         messages.push({ role: "tool", tool_call_id: call.id, content: output });
       }
       continue;
@@ -108,6 +137,7 @@ export async function runWorker({ task, worker, provider, cwd, signal, env, onEv
       status = "verify_failed";
       break;
     }
+    runsSinceChange = 0; // a failed check is new information worth investigating
     messages.push({
       role: "user",
       content: `The check \`${task.verify}\` failed with exit code ${r.code}:\n\n${tail(r.output, 4000)}\n\nFix the problem, then report again.`,

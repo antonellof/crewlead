@@ -26,6 +26,7 @@ const WORKER_DEFAULTS = {
   maxSteps: 40,
   maxTokens: 8192,
   verifyRetries: 3,
+  maxRunsWithoutChange: 12,
   requestTimeoutMs: 600_000,
   commandTimeoutMs: 120_000,
 };
