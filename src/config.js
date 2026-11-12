@@ -32,11 +32,11 @@ const WORKER_DEFAULTS = {
 
 export function configCandidates(cwd = process.cwd(), env = process.env) {
   const list = [];
-  if (env.CAPOMASTRO_CONFIG) list.push(resolve(cwd, env.CAPOMASTRO_CONFIG));
-  list.push(join(cwd, "capomastro.config.json"));
-  list.push(join(cwd, ".capomastro", "config.json"));
+  if (env.CREWLEAD_CONFIG) list.push(resolve(cwd, env.CREWLEAD_CONFIG));
+  list.push(join(cwd, "crewlead.config.json"));
+  list.push(join(cwd, ".crewlead", "config.json"));
   const xdg = env.XDG_CONFIG_HOME || join(homedir(), ".config");
-  list.push(join(xdg, "capomastro", "config.json"));
+  list.push(join(xdg, "crewlead", "config.json"));
   return list;
 }
 
@@ -48,7 +48,7 @@ export function loadConfig({ cwd = process.cwd(), env = process.env } = {}) {
     try {
       raw = JSON.parse(readFileSync(file, "utf8"));
     } catch (err) {
-      throw new Error(`capomastro: cannot parse ${file}: ${err.message}`);
+      throw new Error(`crewlead: cannot parse ${file}: ${err.message}`);
     }
     source = file;
     break;
@@ -66,41 +66,41 @@ export function normalize(raw, env = process.env) {
   };
 
   // Env-only setup: one endpoint, no config file needed.
-  if (env.CAPOMASTRO_BASE_URL || env.CAPOMASTRO_MODEL) {
+  if (env.CREWLEAD_BASE_URL || env.CREWLEAD_MODEL) {
     config.providers.env = {
-      baseUrl: env.CAPOMASTRO_BASE_URL || "http://127.0.0.1:11434/v1",
-      apiKeyEnv: "CAPOMASTRO_API_KEY",
-      maxConcurrency: Number(env.CAPOMASTRO_MAX_CONCURRENCY) || 3,
+      baseUrl: env.CREWLEAD_BASE_URL || "http://127.0.0.1:11434/v1",
+      apiKeyEnv: "CREWLEAD_API_KEY",
+      maxConcurrency: Number(env.CREWLEAD_MAX_CONCURRENCY) || 3,
     };
     config.workers.env = {
       provider: "env",
-      model: env.CAPOMASTRO_MODEL || "qwen3.8:27b",
+      model: env.CREWLEAD_MODEL || "qwen3.8:27b",
     };
     config.defaultWorker = "env";
   }
-  if (env.CAPOMASTRO_WORKER) config.defaultWorker = env.CAPOMASTRO_WORKER;
+  if (env.CREWLEAD_WORKER) config.defaultWorker = env.CREWLEAD_WORKER;
 
   const names = Object.keys(config.workers);
-  if (names.length === 0) throw new Error("capomastro: config has no workers");
+  if (names.length === 0) throw new Error("crewlead: config has no workers");
   if (!config.defaultWorker) config.defaultWorker = names[0];
 
   for (const [name, p] of Object.entries(config.providers)) {
-    if (!p.baseUrl) throw new Error(`capomastro: provider "${name}" needs a baseUrl`);
+    if (!p.baseUrl) throw new Error(`crewlead: provider "${name}" needs a baseUrl`);
     p.baseUrl = p.baseUrl.replace(/\/+$/, "");
     p.maxConcurrency = Math.max(1, Number(p.maxConcurrency) || 2);
   }
   for (const [name, w] of Object.entries(config.workers)) {
-    if (!w.model) throw new Error(`capomastro: worker "${name}" needs a model`);
+    if (!w.model) throw new Error(`crewlead: worker "${name}" needs a model`);
     if (!config.providers[w.provider]) {
-      throw new Error(`capomastro: worker "${name}" uses unknown provider "${w.provider}"`);
+      throw new Error(`crewlead: worker "${name}" uses unknown provider "${w.provider}"`);
     }
     if (w.fallback && !config.workers[w.fallback]) {
-      throw new Error(`capomastro: worker "${name}" has unknown fallback "${w.fallback}"`);
+      throw new Error(`crewlead: worker "${name}" has unknown fallback "${w.fallback}"`);
     }
     config.workers[name] = { ...WORKER_DEFAULTS, ...w };
   }
   if (!config.workers[config.defaultWorker]) {
-    throw new Error(`capomastro: defaultWorker "${config.defaultWorker}" is not defined`);
+    throw new Error(`crewlead: defaultWorker "${config.defaultWorker}" is not defined`);
   }
   return config;
 }

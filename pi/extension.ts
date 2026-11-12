@@ -27,7 +27,7 @@ export default function (pi: ExtensionAPI) {
     label: "Delegate",
     description: schema("delegate").description,
     promptSnippet: "Hand one coding task to a cheaper worker model",
-    promptGuidelines: GUIDELINES.split("\n").slice(1).map((l) => l.replace(/^\d+\.\s*/, "capomastro: ")),
+    promptGuidelines: GUIDELINES.split("\n").slice(1).map((l) => l.replace(/^\d+\.\s*/, "crewlead: ")),
     parameters: schema("delegate").inputSchema as any,
     async execute(_id, params: any, signal, onUpdate, ctx) {
       return text(await poolFor(ctx.cwd).delegate({ id: "task-1", ...params }, { signal, onEvent: progress(onUpdate) }));
@@ -57,7 +57,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand("workers", {
-    description: "Show capomastro worker profiles",
+    description: "Show crewlead worker profiles",
     handler: async (_args, ctx) => {
       const pool = poolFor(ctx.cwd);
       const lines = describeWorkers(pool.config).map(

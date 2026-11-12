@@ -1,17 +1,17 @@
 {
-  "name": "capomastro",
+  "name": "crewlead",
   "version": "0.1.0",
   "description": "One lead model plans and reviews. Cheap local or remote workers write the code in parallel. Plugin for Claude Code, Codex and Pi.",
   "type": "module",
   "license": "MIT",
   "author": "Antonello Fratepietro (https://github.com/antonellof)",
-  "repository": { "type": "git", "url": "git+https://github.com/antonellof/capomastro.git" },
-  "homepage": "https://github.com/antonellof/capomastro",
+  "repository": { "type": "git", "url": "git+https://github.com/antonellof/crewlead.git" },
+  "homepage": "https://github.com/antonellof/crewlead",
   "keywords": ["pi-package", "claude-code", "codex", "mcp", "multi-llm", "orchestration", "local-llm", "openrouter", "qwen"],
-  "bin": { "capomastro": "bin/capomastro.js" },
+  "bin": { "crewlead": "bin/crewlead.js" },
   "main": "src/index.js",
   "exports": { ".": "./src/index.js" },
-  "files": ["bin", "src", "pi", "hooks", "skills", ".claude-plugin", ".mcp.json", "codex", "capomastro.config.example.json"],
+  "files": ["bin", "src", "pi", "hooks", "skills", ".claude-plugin", ".mcp.json", "codex", "crewlead.config.example.json"],
   "engines": { "node": ">=20.3" },
   "scripts": {
     "test": "node --test"

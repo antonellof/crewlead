@@ -9,8 +9,8 @@
       "apiKeyEnv": "OPENROUTER_API_KEY",
       "maxConcurrency": 8,
       "headers": {
-        "HTTP-Referer": "https://github.com/antonellof/capomastro",
-        "X-Title": "capomastro"
+        "HTTP-Referer": "https://github.com/antonellof/crewlead",
+        "X-Title": "crewlead"
       }
     }
   },

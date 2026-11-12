@@ -1,6 +1,6 @@
-## Delegating to worker models (capomastro)
+## Delegating to worker models (crewlead)
 
-The `capomastro` MCP server gives you the tools `delegate`, `delegate_batch` and `list_workers`.
+The `crewlead` MCP server gives you the tools `delegate`, `delegate_batch` and `list_workers`.
 
 You are the lead engineer. Worker models write the code. You plan, split, brief and review. Your tokens are expensive and theirs are cheap, so spend yours on decisions.
 

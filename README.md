@@ -1,8 +1,8 @@
-# capomastro
+# crewlead
 
 One lead model plans and reviews. Cheap workers write the code in parallel.
 
-A *capomastro* is the master builder on an Italian construction site: one person reads the plans and gives the orders, the crew lays the bricks. This project does the same with LLMs. Your expensive model (Claude, GPT, anything) stays in your coding agent as the lead. Light worker models, local or remote, do the typing and the retries.
+A crew lead reads the plans and gives the orders, and the crew does the building. This project does the same with LLMs. Your expensive model (Claude, GPT, anything) stays in your coding agent as the lead. Light worker models, local or remote, do the typing and the retries.
 
 Works with **Claude Code** (plugin), **Codex** (MCP server) and **Pi** (native extension). Zero npm dependencies. Node 20.3 or newer.
 
@@ -11,7 +11,7 @@ Works with **Claude Code** (plugin), **Codex** (MCP server) and **Pi** (native e
             |
             |  delegate_batch([task A, task B, task C])
             v
-       capomastro pool  (concurrency cap per provider, fallback)
+       crewlead pool  (concurrency cap per provider, fallback)
         |        |        |
      worker A  worker B  worker C     each: read -> edit -> run -> verify -> retry
         |        |        |
@@ -20,7 +20,7 @@ Works with **Claude Code** (plugin), **Codex** (MCP server) and **Pi** (native e
 
 ## Why
 
-The lead model is the expensive part of an agent run. Most of its output tokens go into typing code it has already designed. Capomastro moves that typing to a worker:
+The lead model is the expensive part of an agent run. Most of its output tokens go into typing code it has already designed. Crewlead moves that typing to a worker:
 
 - The lead writes a contract and a task list, then reads short reports. It never streams file contents.
 - Each worker runs its own agent loop and only returns a summary, the changed files and a test result.
@@ -60,14 +60,14 @@ A worker is a profile in a config file: a provider (any OpenAI-compatible endpoi
 
 With this file, tasks go to the local server, three at a time. If the local server is down, each task moves to OpenRouter. The lead can also pick a profile per task with `"worker": "builder-remote"`.
 
-Create the file with `capomastro init`. Lookup order:
+Create the file with `crewlead init`. Lookup order:
 
-1. `$CAPOMASTRO_CONFIG`
-2. `./capomastro.config.json`
-3. `./.capomastro/config.json`
-4. `~/.config/capomastro/config.json`
+1. `$CREWLEAD_CONFIG`
+2. `./crewlead.config.json`
+3. `./.crewlead/config.json`
+4. `~/.config/crewlead/config.json`
 
-No file at all? Capomastro uses Ollama at `127.0.0.1:11434` with `qwen3.8:27b`. Or set one endpoint with environment variables: `CAPOMASTRO_BASE_URL`, `CAPOMASTRO_MODEL`, `CAPOMASTRO_API_KEY`, `CAPOMASTRO_MAX_CONCURRENCY`.
+No file at all? Crewlead uses Ollama at `127.0.0.1:11434` with `qwen3.8:27b`. Or set one endpoint with environment variables: `CREWLEAD_BASE_URL`, `CREWLEAD_MODEL`, `CREWLEAD_API_KEY`, `CREWLEAD_MAX_CONCURRENCY`.
 
 ### Provider options
 
@@ -93,22 +93,22 @@ No file at all? Capomastro uses Ollama at `127.0.0.1:11434` with `qwen3.8:27b`. 
 | `extraBody` | none | Extra fields merged into the request, for example `{"reasoning": {"effort": "low"}}` |
 | `systemPrompt` | built in | Replace the worker's system prompt |
 
-Check your setup with `capomastro doctor`. It sends one request per worker and tells you if the model supports tool calling. A model without tool calling cannot edit files.
+Check your setup with `crewlead doctor`. It sends one request per worker and tells you if the model supports tool calling. A model without tool calling cannot edit files.
 
 ## Install
 
 ### Claude Code
 
 ```
-/plugin marketplace add antonellof/capomastro
-/plugin install capomastro@capomastro
+/plugin marketplace add antonellof/crewlead
+/plugin install crewlead@crewlead
 ```
 
 The plugin registers three things: the MCP server, a skill that teaches the lead how to delegate, and a hook for boss mode.
 
 Long batches can exceed the default MCP tool timeout. Start Claude Code with `MCP_TOOL_TIMEOUT=1800000` if workers get cut off.
 
-**Boss mode.** Run `capomastro boss on` in a project (or set `CAPOMASTRO_BOSS=1`). The hook then blocks `Edit` and `Write` for the lead, so every change has to go through a worker. `capomastro boss off` turns it off.
+**Boss mode.** Run `crewlead boss on` in a project (or set `CREWLEAD_BOSS=1`). The hook then blocks `Edit` and `Write` for the lead, so every change has to go through a worker. `crewlead boss off` turns it off.
 
 ### Codex
 
@@ -117,7 +117,7 @@ Clone the repo, then add the block from [`codex/config.example.toml`](codex/conf
 ### Pi
 
 ```
-pi install git:github.com/antonellof/capomastro
+pi install git:github.com/antonellof/crewlead
 ```
 
 The extension registers `delegate`, `delegate_batch` and `list_workers` as native tools, plus a `/workers` command. No MCP involved.
@@ -125,10 +125,10 @@ The extension registers `delegate`, `delegate_batch` and `list_workers` as nativ
 ### Standalone
 
 ```
-git clone https://github.com/antonellof/capomastro && cd capomastro
-node bin/capomastro.js init
-node bin/capomastro.js doctor
-node bin/capomastro.js run "Create fizzbuzz.js and a node:test file for it" --verify "node --test"
+git clone https://github.com/antonellof/crewlead && cd crewlead
+node bin/crewlead.js init
+node bin/crewlead.js doctor
+node bin/crewlead.js run "Create fizzbuzz.js and a node:test file for it" --verify "node --test"
 ```
 
 ## Tools the lead gets

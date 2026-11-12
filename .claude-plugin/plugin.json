@@ -1,10 +1,10 @@
 {
-  "name": "capomastro",
+  "name": "crewlead",
   "version": "0.1.0",
   "description": "One lead model plans and reviews. Cheap local or remote workers write the code in parallel.",
   "author": { "name": "Antonello Fratepietro", "url": "https://github.com/antonellof" },
-  "homepage": "https://github.com/antonellof/capomastro",
-  "repository": "https://github.com/antonellof/capomastro",
+  "homepage": "https://github.com/antonellof/crewlead",
+  "repository": "https://github.com/antonellof/crewlead",
   "license": "MIT",
   "keywords": ["multi-llm", "orchestration", "local-models", "openrouter", "subagents"]
 }

@@ -1,9 +1,9 @@
 ---
-name: capomastro
-description: Delegate implementation work to cheaper worker models through the capomastro delegate and delegate_batch tools. Use when the user asks to build, implement, scaffold or refactor code and capomastro tools are available, when the user mentions workers, builders, local models or boss mode, or when a write is blocked by capomastro boss mode.
+name: crewlead
+description: Delegate implementation work to cheaper worker models through the crewlead delegate and delegate_batch tools. Use when the user asks to build, implement, scaffold or refactor code and crewlead tools are available, when the user mentions workers, builders, local models or boss mode, or when a write is blocked by crewlead boss mode.
 ---
 
-# Capomastro: you lead, workers build
+# Crewlead: you lead, workers build
 
 You are the lead engineer. Worker models (local or remote, set in the user's config) write the code. Your tokens are expensive and theirs are cheap, so spend yours on planning and review.
 

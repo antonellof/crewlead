@@ -44,7 +44,7 @@ const call = (name, args) => ({
 });
 const say = (content) => ({ role: "assistant", content });
 const toolTurns = (body) => body.messages.filter((m) => m.role === "tool").length;
-const tmp = () => realpathSync(mkdtempSync(join(tmpdir(), "capomastro-")));
+const tmp = () => realpathSync(mkdtempSync(join(tmpdir(), "crewlead-")));
 
 function config(url, extra = {}) {
   return normalize({
@@ -172,7 +172,7 @@ test("missing remote key is an error result, not a crash", async () => {
 });
 
 test("config: env-only setup and validation", () => {
-  const c = normalize({ providers: {}, workers: {} }, { CAPOMASTRO_BASE_URL: "http://x/v1/", CAPOMASTRO_MODEL: "m" });
+  const c = normalize({ providers: {}, workers: {} }, { CREWLEAD_BASE_URL: "http://x/v1/", CREWLEAD_MODEL: "m" });
   assert.equal(c.defaultWorker, "env");
   assert.equal(c.providers.env.baseUrl, "http://x/v1");
   assert.throws(() => normalize({ providers: {}, workers: { w: { provider: "nope", model: "m" } } }, {}), /unknown provider/);
@@ -182,10 +182,10 @@ test("MCP server: initialize, list tools, call delegate", async () => {
   const llm = await mockLLM((body) =>
     toolTurns(body) === 0 ? call("write_file", { path: "hello.txt", content: "hi" }) : say("wrote hello"));
   const cwd = tmp();
-  writeFileSync(join(cwd, "capomastro.config.json"), JSON.stringify({
+  writeFileSync(join(cwd, "crewlead.config.json"), JSON.stringify({
     providers: { local: { baseUrl: llm.url } }, workers: { builder: { provider: "local", model: "mock" } },
   }));
-  const child = spawn("node", [join(root, "bin/capomastro.js"), "mcp"], { cwd, env: { PATH: process.env.PATH }, stdio: ["pipe", "pipe", "inherit"] });
+  const child = spawn("node", [join(root, "bin/crewlead.js"), "mcp"], { cwd, env: { PATH: process.env.PATH }, stdio: ["pipe", "pipe", "inherit"] });
   const replies = new Map();
   let buf = "";
   child.stdout.on("data", (d) => {
@@ -203,7 +203,7 @@ test("MCP server: initialize, list tools, call delegate", async () => {
   });
 
   const init = await rpc(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "0" } });
-  assert.equal(init.result.serverInfo.name, "capomastro");
+  assert.equal(init.result.serverInfo.name, "crewlead");
   child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
   const list = await rpc(2, "tools/list", {});
   assert.deepEqual(list.result.tools.map((t) => t.name), ["delegate", "delegate_batch", "list_workers"]);
@@ -225,6 +225,6 @@ test("boss-mode hook denies only when the flag exists", async () => {
     c.stdin.end(JSON.stringify({ tool_name: "Edit" }));
   });
   assert.equal(await runHook(), "");
-  await new Promise((r) => spawn("node", [join(root, "bin/capomastro.js"), "boss", "on"], { cwd }).on("close", r));
+  await new Promise((r) => spawn("node", [join(root, "bin/crewlead.js"), "boss", "on"], { cwd }).on("close", r));
   assert.equal(JSON.parse(await runHook()).hookSpecificOutput.permissionDecision, "deny");
 });

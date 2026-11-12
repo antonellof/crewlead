@@ -1,16 +1,16 @@
 # Add this to ~/.codex/config.toml
 
-[mcp_servers.capomastro]
+[mcp_servers.crewlead]
 command = "node"
-args = ["/absolute/path/to/capomastro/bin/capomastro.js", "mcp"]
+args = ["/absolute/path/to/crewlead/bin/crewlead.js", "mcp"]
 # Without a clone:
 # command = "npx"
-# args = ["-y", "github:antonellof/capomastro", "mcp"]
+# args = ["-y", "github:antonellof/crewlead", "mcp"]
 startup_timeout_sec = 30
 # delegate_batch returns when every worker is done. Give it room.
 tool_timeout_sec = 1800
 
-# Workers come from capomastro.config.json in the project, or from
-# ~/.config/capomastro/config.json. Keys for remote providers go here:
-[mcp_servers.capomastro.env]
+# Workers come from crewlead.config.json in the project, or from
+# ~/.config/crewlead/config.json. Keys for remote providers go here:
+[mcp_servers.crewlead.env]
 OPENROUTER_API_KEY = "sk-or-..."

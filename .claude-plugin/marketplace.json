@@ -1,9 +1,9 @@
 {
-  "name": "capomastro",
+  "name": "crewlead",
   "owner": { "name": "Antonello Fratepietro" },
   "plugins": [
     {
-      "name": "capomastro",
+      "name": "crewlead",
       "source": "./",
       "description": "One lead model plans and reviews. Cheap local or remote workers write the code in parallel."
     }

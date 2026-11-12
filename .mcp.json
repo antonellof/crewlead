@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "capomastro": {
+    "crewlead": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/capomastro.js", "mcp"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/crewlead.js", "mcp"]
     }
   }
 }

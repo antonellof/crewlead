@@ -11,16 +11,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const [cmd = "mcp", ...rest] = process.argv.slice(2);
 
-const HELP = `capomastro ${version}
+const HELP = `crewlead ${version}
 One lead model plans. Cheap workers build.
 
 Usage:
-  capomastro mcp                 Start the MCP server on stdio (default)
-  capomastro init                Write capomastro.config.json in this directory
-  capomastro workers             Show the configured workers
-  capomastro doctor              Send a test request to every worker
-  capomastro run "<task>" [--worker name] [--verify "cmd"] [--owns a,b]
-  capomastro boss on|off         Block or allow file edits by the lead (Claude Code hook)
+  crewlead mcp                 Start the MCP server on stdio (default)
+  crewlead init                Write crewlead.config.json in this directory
+  crewlead workers             Show the configured workers
+  crewlead doctor              Send a test request to every worker
+  crewlead run "<task>" [--worker name] [--verify "cmd"] [--owns a,b]
+  crewlead boss on|off         Block or allow file edits by the lead (Claude Code hook)
 `;
 
 function flag(name) {
@@ -34,12 +34,12 @@ switch (cmd) {
     break;
 
   case "init": {
-    const target = join(process.cwd(), "capomastro.config.json");
+    const target = join(process.cwd(), "crewlead.config.json");
     if (existsSync(target)) {
       console.error(`${target} already exists`);
       process.exit(1);
     }
-    writeFileSync(target, readFileSync(join(root, "capomastro.config.example.json")));
+    writeFileSync(target, readFileSync(join(root, "crewlead.config.example.json")));
     console.log(`wrote ${target}`);
     break;
   }
@@ -94,7 +94,7 @@ switch (cmd) {
   }
 
   case "boss": {
-    const file = join(process.cwd(), ".capomastro", "boss");
+    const file = join(process.cwd(), ".crewlead", "boss");
     if (rest[0] === "on") {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, "The lead model may not edit files. Remove this file to turn boss mode off.\n");

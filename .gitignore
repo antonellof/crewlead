@@ -1,5 +1,5 @@
 node_modules/
-.capomastro/
-capomastro.config.json
+.crewlead/
+crewlead.config.json
 .env
 .DS_Store

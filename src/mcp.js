@@ -9,7 +9,7 @@ const PROTOCOL_VERSION = "2025-06-18";
 
 export function startMcpServer({ version = "0.0.0", input = process.stdin, output = process.stdout } = {}) {
   // Claude Code and Codex start the server in the project directory.
-  const cwd = process.env.CAPOMASTRO_CWD || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const cwd = process.env.CREWLEAD_CWD || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   let pool = null;
   const getPool = () => (pool ??= new Pool({ cwd }));
   const running = new Map();
@@ -47,7 +47,7 @@ export function startMcpServer({ version = "0.0.0", input = process.stdin, outpu
             result: {
               protocolVersion: params?.protocolVersion ?? PROTOCOL_VERSION,
               capabilities: { tools: {} },
-              serverInfo: { name: "capomastro", version },
+              serverInfo: { name: "crewlead", version },
               instructions: GUIDELINES,
             },
           });
@@ -70,7 +70,7 @@ export function startMcpServer({ version = "0.0.0", input = process.stdin, outpu
             const result = await callTool(params?.name, params?.arguments ?? {}, controller.signal, progress);
             send({ id, result });
           } catch (err) {
-            send({ id, result: text(`capomastro error: ${err.message}`, true) });
+            send({ id, result: text(`crewlead error: ${err.message}`, true) });
           } finally {
             running.delete(id);
           }
