@@ -1,0 +1,17 @@
+{
+  "providers": {
+    "myprovider": {
+      "baseUrl": "https://api.example.com/v1",
+      "apiKeyEnv": "MYPROVIDER_API_KEY",
+      "maxConcurrency": 4
+    }
+  },
+  "workers": {
+    "builder": {
+      "description": "Any OpenAI-compatible API with tool calling. Copy the model id from the provider's model list.",
+      "provider": "myprovider",
+      "model": "provider/model-id"
+    }
+  },
+  "defaultWorker": "builder"
+}

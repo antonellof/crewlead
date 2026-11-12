@@ -1,0 +1,16 @@
+{
+  "providers": {
+    "ollama": {
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "maxConcurrency": 2
+    }
+  },
+  "workers": {
+    "builder": {
+      "description": "Qwen 3.8 27B on Ollama",
+      "provider": "ollama",
+      "model": "qwen3.8:27b"
+    }
+  },
+  "defaultWorker": "builder"
+}

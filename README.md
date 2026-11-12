@@ -132,6 +132,20 @@ Tips:
 - **Ask for a verify command.** `node --test test/x.test.js`, `node --check src/x.js`, a type check or a lint run. A failing check goes back to the worker, which retries for free on a local model.
 - **Turn on boss mode** when you want to be sure the lead never writes code itself.
 
+## Setup recipes
+
+[docs/setup.md](docs/setup.md) has full setups for each host (Claude Code, Codex, Pi, command line) and each kind of worker, with ready-to-copy files in [`examples/configs/`](examples/configs/):
+
+| File | Workers |
+| --- | --- |
+| [`local-llamacpp.json`](examples/configs/local-llamacpp.json) | llama.cpp on this machine, 3 parallel slots |
+| [`local-ollama.json`](examples/configs/local-ollama.json) | Ollama |
+| [`local-lmstudio.json`](examples/configs/local-lmstudio.json) | LM Studio |
+| [`openrouter-only.json`](examples/configs/openrouter-only.json) | OpenRouter, no GPU: a default and a cheaper `fast` profile |
+| [`local-with-openrouter-fallback.json`](examples/configs/local-with-openrouter-fallback.json) | Local first, OpenRouter when the server is down or busy |
+| [`two-machines.json`](examples/configs/two-machines.json) | Two llama.cpp servers on your LAN |
+| [`any-openai-compatible.json`](examples/configs/any-openai-compatible.json) | Template for vLLM, hosted APIs or a company gateway |
+
 ## Other ways to install
 
 ### Claude Code, MCP server only
@@ -156,6 +170,7 @@ command = "npx"
 args = ["-y", "github:antonellof/crewlead", "mcp"]
 startup_timeout_sec = 30
 tool_timeout_sec = 1800
+env_vars = ["OPENROUTER_API_KEY"]   # forwards the key from your shell, never stores it
 ```
 
 Paste [`codex/AGENTS.snippet.md`](codex/AGENTS.snippet.md) into your `AGENTS.md` so the lead knows how to delegate. Not yet tested in a real Codex session.

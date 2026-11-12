@@ -1,0 +1,13 @@
+{
+  "providers": {
+    "lmstudio": { "baseUrl": "http://127.0.0.1:1234/v1", "maxConcurrency": 2 }
+  },
+  "workers": {
+    "builder": {
+      "description": "The model loaded in LM Studio. Use the id from GET /v1/models.",
+      "provider": "lmstudio",
+      "model": "qwen3.8-27b"
+    }
+  },
+  "defaultWorker": "builder"
+}

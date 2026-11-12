@@ -452,3 +452,18 @@ test("read_file counts lines without the trailing newline", async () => {
   assert.equal(outputs[0], "1\ta\n2\tb\n3\tc");
   assert.match(outputs[1], /\[5 lines total/);
 });
+
+test("every example config is valid and keeps keys out of the file", async () => {
+  const { readdirSync } = await import("node:fs");
+  const dir = join(root, "examples", "configs");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
+  assert.ok(files.length >= 5);
+  for (const f of files) {
+    const raw = JSON.parse(readFileSync(join(dir, f), "utf8"));
+    assert.doesNotThrow(() => normalize(structuredClone(raw), {}), f);
+    for (const p of Object.values(raw.providers)) assert.equal(p.apiKey, undefined, `${f} has an inline key`);
+  }
+  for (const f of ["crewlead.config.example.json", "bench/crewlead.bench.json"]) {
+    assert.doesNotThrow(() => normalize(JSON.parse(readFileSync(join(root, f), "utf8")), {}), f);
+  }
+});

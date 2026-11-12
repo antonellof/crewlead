@@ -1,0 +1,29 @@
+{
+  "providers": {
+    "local": { "baseUrl": "http://127.0.0.1:8080/v1", "maxConcurrency": 3 },
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "maxConcurrency": 8,
+      "headers": { "HTTP-Referer": "https://github.com/antonellof/crewlead", "X-Title": "crewlead" }
+    }
+  },
+  "workers": {
+    "builder": {
+      "description": "Local Qwen. Free retries. Moves to OpenRouter when the server is down.",
+      "provider": "local",
+      "model": "qwen3.8-27b",
+      "contextTokens": 65536,
+      "extraBody": { "chat_template_kwargs": { "enable_thinking": false } },
+      "fallback": "builder-remote"
+    },
+    "builder-remote": {
+      "description": "Same model on OpenRouter. Pick it for big batches when the 3 local slots would queue.",
+      "provider": "openrouter",
+      "model": "qwen/qwen3.8-27b",
+      "inputPricePerM": 0.15,
+      "outputPricePerM": 1.875
+    }
+  },
+  "defaultWorker": "builder"
+}

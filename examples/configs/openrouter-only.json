@@ -1,0 +1,27 @@
+{
+  "providers": {
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "maxConcurrency": 8,
+      "headers": { "HTTP-Referer": "https://github.com/antonellof/crewlead", "X-Title": "crewlead" }
+    }
+  },
+  "workers": {
+    "builder": {
+      "description": "Qwen 3.8 27B on OpenRouter. Default for most tasks.",
+      "provider": "openrouter",
+      "model": "qwen/qwen3.8-27b",
+      "inputPricePerM": 0.15,
+      "outputPricePerM": 1.875
+    },
+    "fast": {
+      "description": "Qwen 3.6 35B A3B, a small MoE. Cheaper and quicker for simple, well specified tasks.",
+      "provider": "openrouter",
+      "model": "qwen/qwen3.6-35b-a3b",
+      "inputPricePerM": 0.10,
+      "outputPricePerM": 0.90
+    }
+  },
+  "defaultWorker": "builder"
+}

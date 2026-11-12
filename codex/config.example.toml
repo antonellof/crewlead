@@ -10,7 +10,10 @@ startup_timeout_sec = 30
 # delegate_batch returns when every worker is done. Give it room.
 tool_timeout_sec = 1800
 
+# Forward remote provider keys from the shell that starts Codex. Only the
+# names go here; export the values in your shell (for example ~/.zshrc).
+# Do not use [mcp_servers.crewlead.env], which stores values in this file.
+env_vars = ["OPENROUTER_API_KEY"]
+
 # Workers come from crewlead.config.json in the project, or from
-# ~/.config/crewlead/config.json. Keys for remote providers stay in your
-# shell environment (for example export OPENROUTER_API_KEY in ~/.zshrc).
-# Do not write keys into this file.
+# ~/.config/crewlead/config.json.

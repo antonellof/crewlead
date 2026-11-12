@@ -1,0 +1,22 @@
+{
+  "providers": {
+    "studio": { "baseUrl": "http://127.0.0.1:8080/v1", "maxConcurrency": 3 },
+    "laptop": { "baseUrl": "http://192.168.1.20:8080/v1", "maxConcurrency": 2 }
+  },
+  "workers": {
+    "builder": {
+      "description": "Qwen 3.8 27B on this machine.",
+      "provider": "studio",
+      "model": "qwen3.8-27b",
+      "extraBody": { "chat_template_kwargs": { "enable_thinking": false } },
+      "fallback": "builder-laptop"
+    },
+    "builder-laptop": {
+      "description": "Qwen 3.8 27B on the second machine. Give it every other task in a large batch.",
+      "provider": "laptop",
+      "model": "qwen3.8-27b",
+      "extraBody": { "chat_template_kwargs": { "enable_thinking": false } }
+    }
+  },
+  "defaultWorker": "builder"
+}

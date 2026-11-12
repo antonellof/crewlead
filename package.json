@@ -11,7 +11,7 @@
   "bin": { "crewlead": "bin/crewlead.js" },
   "main": "src/index.js",
   "exports": { ".": "./src/index.js" },
-  "files": ["bin", "src", "pi", "hooks", "skills", ".claude-plugin", ".mcp.json", "codex", "crewlead.config.example.json"],
+  "files": ["bin", "src", "pi", "hooks", "skills", ".claude-plugin", ".mcp.json", "codex", "examples", "crewlead.config.example.json"],
   "engines": { "node": ">=20.3" },
   "scripts": {
     "test": "node --test"
