@@ -257,6 +257,7 @@ Lookup order: `$CREWLEAD_CONFIG`, `./crewlead.config.json`, `./.crewlead/config.
 | `temperature` | 0.2 | |
 | `maxSteps` | 40 | Max model turns per task |
 | `maxTokens` | 8192 | Max output tokens per turn |
+| `contextTokens` | none | The model's context per request (per slot on llama.cpp). Old tool output is dropped at 70% of it. `setup` reads it from llama.cpp. Without it, crewlead still shrinks the history when the server reports an overflow. |
 | `verifyRetries` | 3 | Extra attempts after a failed verify command |
 | `allowShell` | true | Set false to remove the `run` tool |
 | `inputPricePerM`, `outputPricePerM` | none | USD per million tokens, for the cost report when the API does not return a cost |

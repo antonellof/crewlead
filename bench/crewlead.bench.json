@@ -9,6 +9,7 @@
       "model": "qwen3.8-27b",
       "maxSteps": 60,
       "maxTokens": 32768,
+      "contextTokens": 65536,
       "requestTimeoutMs": 900000,
       "extraBody": { "chat_template_kwargs": { "enable_thinking": false } }
     }

@@ -8,6 +8,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { normalize } from "../src/config.js";
 import { Pool } from "../src/pool.js";
+import { compact } from "../src/worker.js";
 import { detectServers, suggestConfig, writeConfig } from "../src/setup.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,7 +23,7 @@ async function mockLLM(script) {
     }
     if (req.method === "GET" && req.url === "/props") {
       res.writeHead(200, { "content-type": "application/json" });
-      return res.end(JSON.stringify({ total_slots: 4 }));
+      return res.end(JSON.stringify({ total_slots: 4, default_generation_settings: { n_ctx: 16384 } }));
     }
     let body = "";
     req.on("data", (d) => (body += d));
@@ -34,6 +35,10 @@ async function mockLLM(script) {
       await new Promise((r) => setTimeout(r, 30));
       state.active--;
       const message = script(parsed, state);
+      if (message.__status) {
+        res.writeHead(message.__status, { "content-type": "application/json" });
+        return res.end(JSON.stringify(message.__body));
+      }
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({
         choices: [{ message, finish_reason: message.tool_calls ? "tool_calls" : "stop" }],
@@ -259,11 +264,12 @@ test("setup: detect a server, suggest a config with fallback, refuse keys and ov
   const llm = await mockLLM(() => say("ok"));
   const servers = await detectServers({ urls: [llm.url] });
   llm.close();
-  assert.deepEqual(servers[0], { kind: "llamacpp", baseUrl: llm.url, models: ["mock-qwen3"], slots: 4 });
+  assert.deepEqual(servers[0], { kind: "llamacpp", baseUrl: llm.url, models: ["mock-qwen3"], slots: 4, contextPerSlot: 16384 });
 
   const localOnly = suggestConfig([servers[0]], {});
   assert.equal(localOnly.defaultWorker, "builder");
   assert.equal(localOnly.providers.local.maxConcurrency, 4);
+  assert.equal(localOnly.workers.builder.contextTokens, 16384);
   assert.deepEqual(localOnly.workers.builder.extraBody, { chat_template_kwargs: { enable_thinking: false } });
   assert.equal(localOnly.providers.openrouter, undefined);
 
@@ -325,4 +331,124 @@ test("MCP setup tool: detect, write, then the pool uses the new config", async (
   assert.equal(after.workers[0].model, "mock-qwen3");
   child.kill();
   llm.close();
+});
+
+const OVERFLOW = {
+  __status: 400,
+  __body: { error: { code: 400, message: "request (68069 tokens) exceeds the available context size (65536 tokens), try increasing it", type: "exceed_context_size_error" } },
+};
+const big = (c) => c.repeat(2000);
+const dropped = (body) => JSON.stringify(body.messages).includes("dropped to save context");
+
+test("context overflow: the worker drops old output, retries and finishes", async () => {
+  let overflowed = false;
+  const llm = await mockLLM((body) => {
+    const n = toolTurns(body);
+    if (n === 0) return call("write_file", { path: "a.js", content: big("a") });
+    if (n === 1) return call("run", { command: `node -e "console.log('x'.repeat(3000))"` });
+    if (n === 2) return call("write_file", { path: "b.js", content: big("b") });
+    if (n === 3) return call("list_dir", {});
+    if (!overflowed) {
+      overflowed = true;
+      return OVERFLOW;
+    }
+    return say(dropped(body) ? "done after compacting" : "never compacted");
+  });
+  const cwd = tmp();
+  const events = [];
+  const r = await new Pool({ config: config(llm.url), cwd, env: {} }).delegate(
+    { id: "t", task: "x" },
+    { onEvent: (e) => events.push(e.type) },
+  );
+  llm.close();
+  assert.equal(r.status, "done");
+  assert.equal(r.report, "done after compacting");
+  assert.ok(events.includes("compact"));
+  assert.equal(r.steps, 5, "the overflowed request is not charged as a step");
+  assert.equal(readFileSync(join(cwd, "a.js"), "utf8").length, 2000, "files on disk are untouched");
+});
+
+test("context overflow that compaction cannot fix is an error with a clear message", async () => {
+  const llm = await mockLLM(() => OVERFLOW);
+  const r = await new Pool({ config: config(llm.url), cwd: tmp(), env: {} }).delegate({ id: "t", task: "x" });
+  llm.close();
+  assert.equal(r.status, "error");
+  assert.match(r.report, /does not fit the model's context/);
+});
+
+test("contextTokens: the history shrinks before the server overflows", async () => {
+  const seen = [];
+  const llm = await mockLLM((body) => {
+    seen.push(dropped(body));
+    const n = toolTurns(body);
+    if (n < 8) return call("write_file", { path: `f${n}.js`, content: big("x") });
+    return say("done");
+  });
+  // The mock reports 100 prompt tokens per request: above 70% of 120.
+  const events = [];
+  const r = await new Pool({ config: config(llm.url, { builder: { contextTokens: 120 } }), cwd: tmp(), env: {} }).delegate(
+    { id: "t", task: "x" },
+    { onEvent: (e) => events.push(e.type) },
+  );
+  llm.close();
+  assert.equal(r.status, "done");
+  assert.ok(events.includes("compact"));
+  assert.equal(seen[0], false);
+  assert.equal(seen.at(-1), true);
+});
+
+test("compact keeps the system prompt, the task and recent messages", () => {
+  const long = "y".repeat(1000);
+  const messages = [
+    { role: "system", content: long },
+    { role: "user", content: long },
+    { role: "assistant", content: "", tool_calls: [{ id: "1", type: "function", function: { name: "write_file", arguments: JSON.stringify({ path: "a.js", content: long }) } }] },
+    { role: "tool", tool_call_id: "1", content: long },
+    { role: "assistant", content: "", tool_calls: [{ id: "2", type: "function", function: { name: "run", arguments: "{not json" + long } }] },
+    { role: "tool", tool_call_id: "2", content: long },
+  ];
+  assert.equal(compact(messages, 1), true);
+  assert.equal(messages[0].content, long);
+  assert.equal(messages[1].content, long);
+  assert.deepEqual(JSON.parse(messages[2].tool_calls[0].function.arguments).path, "a.js");
+  assert.match(JSON.parse(messages[2].tool_calls[0].function.arguments).content, /dropped to save context: 1000/);
+  assert.match(messages[3].content, /dropped to save context/);
+  assert.doesNotThrow(() => JSON.parse(messages[4].tool_calls[0].function.arguments), "arguments stay valid JSON");
+  assert.equal(messages[5].content, long, "the most recent message is kept");
+  assert.equal(compact(messages, 1), false, "a second pass has nothing left to drop");
+});
+
+test("max_steps: warns before the limit and reports what the worker was doing", async () => {
+  let warned = false;
+  const llm = await mockLLM((body) => {
+    if (JSON.stringify(body.messages).includes("You have 3 turns left")) warned = true;
+    return call("run", { command: "echo still looking" });
+  });
+  const r = await new Pool({ config: config(llm.url, { builder: { maxSteps: 5 } }), cwd: tmp(), env: {} }).delegate({ id: "t", task: "x" });
+  llm.close();
+  assert.equal(r.status, "max_steps");
+  assert.ok(warned);
+  assert.deepEqual(r.toolCalls, { run: 5 });
+  assert.match(r.report, /Stopped after 5 steps without finishing/);
+  assert.match(r.report, /Tool calls: run x5/);
+  assert.match(r.report, /Files written: none/);
+  assert.match(r.report, /Last call: run .*echo still looking.* -> exit code 0 still looking/);
+});
+
+test("read_file counts lines without the trailing newline", async () => {
+  const cwd = tmp();
+  writeFileSync(join(cwd, "three.txt"), "a\nb\nc\n");
+  writeFileSync(join(cwd, "long.txt"), Array.from({ length: 5 }, (_, i) => `l${i + 1}`).join("\n") + "\n");
+  const outputs = [];
+  const llm = await mockLLM((body) => {
+    const n = toolTurns(body);
+    if (n > 0) outputs.push(body.messages.at(-1).content);
+    if (n === 0) return call("read_file", { path: "three.txt" });
+    if (n === 1) return call("read_file", { path: "long.txt", limit: 2 });
+    return say("done");
+  });
+  await new Pool({ config: config(llm.url), cwd, env: {} }).delegate({ id: "t", task: "x" });
+  llm.close();
+  assert.equal(outputs[0], "1\ta\n2\tb\n3\tc");
+  assert.match(outputs[1], /\[5 lines total/);
 });

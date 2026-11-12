@@ -54,6 +54,7 @@ export async function detectServers({ urls = [], timeoutMs = 1500 } = {}) {
       baseUrl: c.baseUrl,
       models: models.data.map((m) => m.id).filter(Boolean),
       slots: typeof props?.total_slots === "number" ? props.total_slots : null,
+      contextPerSlot: typeof props?.default_generation_settings?.n_ctx === "number" ? props.default_generation_settings.n_ctx : null,
     };
   }));
   const seen = new Set();
@@ -80,6 +81,7 @@ export function suggestConfig(servers, env = process.env) {
       description: `${model} on ${local.kind} at ${local.baseUrl}`,
       provider: "local",
       model,
+      ...(local.contextPerSlot ? { contextTokens: local.contextPerSlot } : {}),
       // Qwen 3.x thinks before every answer by default; builders are much
       // faster without it.
       ...(/qwen3/i.test(model) ? { extraBody: { chat_template_kwargs: { enable_thinking: false } } } : {}),

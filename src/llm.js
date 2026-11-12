@@ -12,6 +12,20 @@ export class ProviderUnreachableError extends Error {
   }
 }
 
+// The request did not fit the model's context window. The caller can shrink
+// the conversation and try again.
+export class ContextOverflowError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ContextOverflowError";
+  }
+}
+
+// llama.cpp: exceed_context_size_error. OpenAI and most proxies:
+// context_length_exceeded / "maximum context length". vLLM and others
+// phrase it in a few more ways.
+const CONTEXT_OVERFLOW = /exceed_context_size|context_length_exceeded|maximum context length|exceeds the available context|context window|too many tokens|prompt is too long/i;
+
 const RETRY_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 
 export async function chat({ provider, worker, messages, tools, signal, env = process.env }) {
@@ -60,6 +74,9 @@ export async function chat({ provider, worker, messages, tools, signal, env = pr
     if (!res.ok) {
       const text = (await res.text().catch(() => "")).slice(0, 500);
       lastError = new Error(`${provider.baseUrl} returned ${res.status}: ${text}`);
+      if ((res.status === 400 || res.status === 413) && CONTEXT_OVERFLOW.test(text)) {
+        throw new ContextOverflowError(lastError.message);
+      }
       if (res.status === 401 || res.status === 403) {
         throw new ProviderUnreachableError(lastError.message);
       }

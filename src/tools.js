@@ -70,6 +70,8 @@ export function createToolbox({ cwd, owns = [], allowShell = true, commandTimeou
     async read_file({ path, offset = 1, limit = 400 }) {
       const text = await readFile(inside(path), "utf8");
       const lines = text.split("\n");
+      // A trailing newline ends the last line; it does not start a new one.
+      if (lines.length > 1 && lines.at(-1) === "") lines.pop();
       const start = Math.max(1, offset);
       const slice = lines.slice(start - 1, start - 1 + limit);
       const body = slice.map((l, i) => `${start + i}\t${l}`).join("\n");
