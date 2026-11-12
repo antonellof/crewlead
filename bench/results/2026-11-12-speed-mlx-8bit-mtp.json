@@ -1,0 +1,44 @@
+{
+  "url": "http://127.0.0.1:8081/v1",
+  "model": "robgaleano/Swift-1.5-Qwen3.8-27B-MLX-8bit",
+  "maxTokens": 400,
+  "speed": [
+    {
+      "parallel": 1,
+      "run": 1,
+      "tokens": 400,
+      "wallSeconds": 15,
+      "combinedTokPerSec": 26.6,
+      "perStreamTokPerSec": 26.6
+    },
+    {
+      "parallel": 1,
+      "run": 2,
+      "tokens": 400,
+      "wallSeconds": 12.1,
+      "combinedTokPerSec": 33.2,
+      "perStreamTokPerSec": 33.2
+    },
+    {
+      "parallel": 3,
+      "run": 1,
+      "tokens": 1200,
+      "wallSeconds": 32.7,
+      "combinedTokPerSec": 36.7,
+      "perStreamTokPerSec": 12.2
+    },
+    {
+      "parallel": 3,
+      "run": 2,
+      "tokens": 1200,
+      "wallSeconds": 32.6,
+      "combinedTokPerSec": 36.9,
+      "perStreamTokPerSec": 12.3
+    }
+  ],
+  "toolCalls": {
+    "valid": 10,
+    "of": 10,
+    "avgSeconds": 2.3
+  }
+}

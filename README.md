@@ -20,6 +20,7 @@
   <a href="#quick-start-with-claude-code">Quick start</a> &middot;
   <a href="#example-a-pop-up-book-film">Example</a> &middot;
   <a href="#example-prompts">Prompts</a> &middot;
+  <a href="#best-setup-on-a-mac">Mac setup</a> &middot;
   <a href="#setup-recipes">Setup recipes</a> &middot;
   <a href="#tools-the-lead-gets">Tools</a> &middot;
   <a href="#configuration">Configuration</a> &middot;
@@ -150,6 +151,37 @@ Tips:
 - **Ask for a verify command.** `node --test test/x.test.js`, `node --check src/x.js`, a type check or a lint run. A failing check goes back to the worker, which retries for free on a local model.
 - **Turn on boss mode** when you want to be sure the lead never writes code itself.
 
+## Best setup on a Mac
+
+Measured on a Mac Studio M5 Max with 128 GB, Qwen 3.8 27B with thinking off. Speed comes from [`bench/speed.js`](bench/speed.js) (400-token answers, end to end), and the batch is the same three real crewlead tasks (a CSV parser, an LRU cache, a slugify function, each with tests) on three workers. One run per row.
+
+| Server | Weights | Memory in use | 1 stream | 3 streams combined | 3-task batch |
+| --- | --- | --- | --- | --- | --- |
+| llama.cpp 0.9.0 | [Qwen3.8-27B UD-Q4_K_XL](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF) GGUF | 41.2 GB, with a 196K-token cache allocated | 26 tok/s | **54 tok/s** | 3 of 3, 99.8 s |
+| mlx-vlm 0.7.12 | [Swift 1.5 Qwen3.8-27B MLX 8-bit](https://huggingface.co/robgaleano/Swift-1.5-Qwen3.8-27B-MLX-8bit) | 28.4 GB | 17 tok/s | 50 tok/s | 3 of 3, 94.3 s |
+| mlx-vlm 0.7.12 + MTP drafter | same, plus the [MTP drafter](https://huggingface.co/robgaleano/Swift-1.5-Qwen3.8-27B-MTP-MLX-8bit) | not measured | **33 tok/s** | 37 tok/s | not run |
+
+All three made 10 of 10 valid tool calls in the speed test.
+
+**Which one:**
+
+- **Three parallel workers, the normal crewlead case:** llama.cpp Q4 or MLX 8-bit without the drafter. They tied on the real batch. MLX keeps the weights at 8 bits; llama.cpp has the smaller download and the plain Apache 2.0 base model.
+- **One worker at a time**, or a local model you also chat with: MLX 8-bit with the MTP drafter, the fastest single stream. In mlx-vlm 0.7.12 the drafter does not combine with parallel requests: three streams shared about the same 37 tok/s as one.
+- **A Mac with 32 to 48 GB:** llama.cpp Q4 with `-np 2` and a smaller `-c`.
+
+**MLX setup, three workers:**
+
+```
+brew install uv
+APC_ENABLED=1 uv run --python 3.12 --with mlx-vlm==0.7.12 -- python -m mlx_vlm.server \
+  --model robgaleano/Swift-1.5-Qwen3.8-27B-MLX-8bit \
+  --max-num-seqs 3 --prefill-step-size 4096 --max-tokens 32768 --host 127.0.0.1 --port 8080
+```
+
+The first start downloads about 28 GB. Then ask the lead to `set up crewlead`, or copy [`examples/configs/mac-mlx.json`](examples/configs/mac-mlx.json). `setup` recognises mlx-vlm but cannot read `--max-num-seqs`, so set `maxConcurrency` to the same number. For one fast worker instead, add `--draft-model robgaleano/Swift-1.5-Qwen3.8-27B-MTP-MLX-8bit --draft-block-size 4` and set `maxConcurrency` to 1.
+
+The Swift 1.5 fine-tune is under the [Swift Open License v1.0](https://huggingface.co/robgaleano/Swift-1.5-Qwen3.8-27B-MLX-8bit/blob/main/LICENSE), not Apache: free up to US$1M in annual revenue, a separate license above that. Not tested here: contexts above 64K tokens, thinking on, and raising the GPU memory limit (`iogpu.wired_limit_mb`), which these sizes did not need on 128 GB. Details: [docs/testing.md](docs/testing.md#7-mac-servers-llamacpp-vs-mlx).
+
 ## Setup recipes
 
 [docs/setup.md](docs/setup.md) has full setups for each host (Claude Code, Codex, Pi, command line) and each kind of worker, with ready-to-copy files in [`examples/configs/`](examples/configs/):
@@ -162,6 +194,7 @@ Tips:
 | [`openrouter-only.json`](examples/configs/openrouter-only.json) | OpenRouter, no GPU: a default and a cheaper `fast` profile |
 | [`local-with-openrouter-fallback.json`](examples/configs/local-with-openrouter-fallback.json) | Local first, OpenRouter when the server is down or busy |
 | [`two-machines.json`](examples/configs/two-machines.json) | Two llama.cpp servers on your LAN |
+| [`mac-mlx.json`](examples/configs/mac-mlx.json) | MLX on Apple Silicon (mlx-vlm), 3 parallel workers |
 | [`any-openai-compatible.json`](examples/configs/any-openai-compatible.json) | Template for vLLM, hosted APIs or a company gateway |
 
 ## Other ways to install

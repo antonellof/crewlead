@@ -70,6 +70,16 @@ llama-server -hf unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL --jinja -c 196608 -np 3 --p
 
 Three workers at once, 65,536 tokens of context each, thinking off. This is what `setup` writes on a Mac with that server running, and the setup the pop-up book run used.
 
+### MLX on Apple Silicon: [`mac-mlx.json`](../examples/configs/mac-mlx.json)
+
+```
+brew install uv
+APC_ENABLED=1 uv run --python 3.12 --with mlx-vlm==0.7.12 -- python -m mlx_vlm.server \
+  --model robgaleano/Swift-1.5-Qwen3.8-27B-MLX-8bit --max-num-seqs 3 --prefill-step-size 4096 --max-tokens 32768 --host 127.0.0.1 --port 8080
+```
+
+Three parallel workers on 8-bit weights. Set `maxConcurrency` to `--max-num-seqs`. Measurements against llama.cpp, and when to add the MTP drafter: [README, Best setup on a Mac](../README.md#best-setup-on-a-mac). The Swift 1.5 fine-tune has its own license (free up to US$1M annual revenue).
+
 ### Ollama: [`local-ollama.json`](../examples/configs/local-ollama.json)
 
 ```

@@ -1,0 +1,15 @@
+{
+  "providers": {
+    "mlx": { "baseUrl": "http://127.0.0.1:8080/v1", "maxConcurrency": 3 }
+  },
+  "workers": {
+    "builder": {
+      "description": "Swift 1.5 Qwen 3.8 27B, 8-bit MLX, on mlx-vlm with --max-num-seqs 3. Thinking off.",
+      "provider": "mlx",
+      "model": "robgaleano/Swift-1.5-Qwen3.8-27B-MLX-8bit",
+      "contextTokens": 65536,
+      "extraBody": { "chat_template_kwargs": { "enable_thinking": false } }
+    }
+  },
+  "defaultWorker": "builder"
+}

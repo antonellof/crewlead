@@ -49,10 +49,18 @@ export async function detectServers({ urls = [], timeoutMs = 1500 } = {}) {
     if (!Array.isArray(models?.data)) return null;
     // llama.cpp reports its parallel slots on /props, outside /v1.
     const props = await getJson(`${c.baseUrl.replace(/\/v1$/, "")}/props`, timeoutMs);
+    // mlx-vlm lists every model in its cache (drafters included) and marks
+    // the one it serves with loaded: true.
+    const isMlx = models.data.some((m) => typeof m.loaded === "boolean");
+    const listed = isMlx ? [...models.data].sort((a, b) => Number(b.loaded) - Number(a.loaded)) : models.data;
+    let kind = c.kind;
+    if (typeof props?.total_slots === "number") kind = "llamacpp";
+    else if (isMlx) kind = "mlx";
+    else if (c.kind === "llamacpp") kind = "openai-compatible"; // port 8080 but not llama.cpp
     return {
-      kind: typeof props?.total_slots === "number" && c.kind === "custom" ? "llamacpp" : c.kind,
+      kind,
       baseUrl: c.baseUrl,
-      models: models.data.map((m) => m.id).filter(Boolean),
+      models: listed.filter((m) => !(isMlx && m.loaded === false && /mtp|draft/i.test(m.id))).map((m) => m.id).filter(Boolean),
       slots: typeof props?.total_slots === "number" ? props.total_slots : null,
       contextPerSlot: typeof props?.default_generation_settings?.n_ctx === "number" ? props.default_generation_settings.n_ctx : null,
     };

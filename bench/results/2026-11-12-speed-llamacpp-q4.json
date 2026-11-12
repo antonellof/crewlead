@@ -1,0 +1,44 @@
+{
+  "url": "http://127.0.0.1:8080/v1",
+  "model": "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL",
+  "maxTokens": 400,
+  "speed": [
+    {
+      "parallel": 1,
+      "run": 1,
+      "tokens": 400,
+      "wallSeconds": 15.4,
+      "combinedTokPerSec": 25.9,
+      "perStreamTokPerSec": 25.9
+    },
+    {
+      "parallel": 1,
+      "run": 2,
+      "tokens": 400,
+      "wallSeconds": 15.1,
+      "combinedTokPerSec": 26.4,
+      "perStreamTokPerSec": 26.4
+    },
+    {
+      "parallel": 3,
+      "run": 1,
+      "tokens": 1200,
+      "wallSeconds": 22.5,
+      "combinedTokPerSec": 53.2,
+      "perStreamTokPerSec": 17.8
+    },
+    {
+      "parallel": 3,
+      "run": 2,
+      "tokens": 1200,
+      "wallSeconds": 22,
+      "combinedTokPerSec": 54.4,
+      "perStreamTokPerSec": 18.1
+    }
+  ],
+  "toolCalls": {
+    "valid": 10,
+    "of": 10,
+    "avgSeconds": 2.6
+  }
+}

@@ -164,6 +164,26 @@ Taken with `bench/screenshot.js` (headless Chrome, 1280x720, `?t=` seek).
 
 All three films show the book, all four worlds and the paper look. The solo film is more detailed (a tiger and a parrot in the jungle, a snowman on the peaks) and keeps the paper-coloured backdrop. Crew run 1 is plainer, uses a dark backdrop, and has a few poles passing through boats and clouds. Crew run 2 keeps the paper backdrop and its scenes hold together better, with simpler shapes than the solo film.
 
+## 7. Mac servers: llama.cpp vs MLX
+
+Same machine, Qwen 3.8 27B, thinking off (`chat_template_kwargs.enable_thinking: false`), one server under test at a time.
+
+| | llama.cpp 0.9.0 | mlx-vlm 0.7.12 | mlx-vlm 0.7.12 + MTP drafter |
+| --- | --- | --- | --- |
+| Weights | unsloth Qwen3.8-27B UD-Q4_K_XL GGUF | Swift 1.5 Qwen3.8-27B, MLX 8-bit | same, plus the 8-bit MTP drafter |
+| Flags | `--jinja -c 196608 -np 3` | `--max-num-seqs 3`, `APC_ENABLED=1` | same, `--draft-block-size 4` |
+| Resident memory | 41.2 GB (3 x 64K-token cache allocated) | 28.4 GB after the runs | not measured |
+| 1 stream, tok/s (2 runs) | 25.9, 26.4 | 15.7, 17.4 | 26.6 (cold), 33.2 |
+| 3 streams combined, tok/s (2 runs) | 53.2, 54.4 | 50.1, 50.3 | 36.7, 36.9 |
+| Valid tool calls | 10 of 10 | not run | 10 of 10 |
+| 3-task crewlead batch | 3 of 3 done, 99.8 s | 3 of 3 done, 94.3 s | not run |
+
+Speeds are end to end from [`bench/speed.js`](../bench/speed.js) (400 generated tokens, prefill included). Raw output: [`bench/results/`](../bench/results/). The batch is the CSV parser, LRU cache and slugify tasks from section 4, each with its own `owns` and `verify`; every verify passed on the first attempt on both servers.
+
+With the drafter, mlx-vlm's log shows 32 to 39 tok/s decode for one request and 12.5 tok/s per request with three in flight, so speculative decoding and continuous batching do not add up in this version. A community post reported about 48 to 50 tok/s for one short prompt and about 80 tok/s for four parallel streams on the same hardware; these runs did not reach either figure.
+
+`setup` labelled the mlx-vlm server `custom` and listed the unloaded drafter as a model. It now recognises mlx-vlm by the `loaded` field and skips unloaded drafters.
+
 ## Not tested yet
 
 - OpenRouter as a live fallback (needs `OPENROUTER_API_KEY`).

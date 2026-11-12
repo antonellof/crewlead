@@ -507,3 +507,25 @@ test("run cap: a file change resets the count, and 0 turns the cap off", async (
     if (cap === 0) assert.ok(outputs.every((o) => !o.includes("crewlead:")));
   }
 });
+
+test("setup: recognises an mlx-vlm server and skips its unloaded drafter", async () => {
+  const { createServer: mk } = await import("node:http");
+  const server = mk((req, res) => {
+    res.writeHead(req.url.endsWith("/models") ? 200 : 404, { "content-type": "application/json" });
+    res.end(req.url.endsWith("/models")
+      ? JSON.stringify({ data: [
+        { id: "someone/Model-27B-MTP-MLX-8bit", loaded: false },
+        { id: "someone/Qwen3.8-27B-MLX-8bit", loaded: true },
+      ] })
+      : "{}");
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${server.address().port}/v1`;
+  const [found] = await detectServers({ urls: [url] });
+  server.close();
+  assert.equal(found.kind, "mlx");
+  assert.deepEqual(found.models, ["someone/Qwen3.8-27B-MLX-8bit"]);
+  const cfg = suggestConfig([found], {});
+  assert.equal(cfg.workers.builder.model, "someone/Qwen3.8-27B-MLX-8bit");
+  assert.deepEqual(cfg.workers.builder.extraBody, { chat_template_kwargs: { enable_thinking: false } });
+});
