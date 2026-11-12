@@ -1,6 +1,9 @@
 {
   "name": "crewlead",
-  "owner": { "name": "Antonello Fratepietro" },
+  "owner": {
+    "name": "Antonello Fratepietro"
+  },
+  "description": "crewlead: one lead model plans and reviews, cheap local or remote workers write the code.",
   "plugins": [
     {
       "name": "crewlead",

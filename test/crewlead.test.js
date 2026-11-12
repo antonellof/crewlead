@@ -228,3 +228,20 @@ test("boss-mode hook denies only when the flag exists", async () => {
   await new Promise((r) => spawn("node", [join(root, "bin/crewlead.js"), "boss", "on"], { cwd }).on("close", r));
   assert.equal(JSON.parse(await runHook()).hookSpecificOutput.permissionDecision, "deny");
 });
+
+test("boss-mode hook tells the lead to delegate on UserPromptSubmit", async () => {
+  const cwd = tmp();
+  const runHook = () => new Promise((resolve) => {
+    const c = spawn("node", [join(root, "hooks/boss-mode.js")], { env: { PATH: process.env.PATH, CLAUDE_PROJECT_DIR: cwd } });
+    let out = "";
+    c.stdout.on("data", (d) => (out += d));
+    c.on("close", () => resolve(out));
+    c.stdin.end(JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt: "build it" }));
+  });
+  assert.equal(await runHook(), "");
+  await new Promise((r) => spawn("node", [join(root, "bin/crewlead.js"), "boss", "on"], { cwd }).on("close", r));
+  const out = JSON.parse(await runHook()).hookSpecificOutput;
+  assert.equal(out.hookEventName, "UserPromptSubmit");
+  assert.equal(out.permissionDecision, undefined);
+  assert.match(out.additionalContext, /mcp__plugin_crewlead_crewlead__delegate_batch/);
+});
