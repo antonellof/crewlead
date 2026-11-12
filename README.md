@@ -26,6 +26,20 @@ The lead model is the expensive part of an agent run. Most of its output tokens 
 - Each worker runs its own agent loop and only returns a summary, the changed files and a test result.
 - A failed check is fed back to the worker, which retries on its own. On a local model those retries cost nothing.
 
+## Example: a pop-up book film
+
+The same prompt ([`bench/popup-book`](bench/popup-book/prompt.md)) built twice in Claude Code with Fable 5.2 as the lead. Left: Fable writes every file. Right: Fable plans and reviews in boss mode, three Qwen 3.8 27B workers on a local llama.cpp server write every file.
+
+| Fable alone | Fable + 3 local Qwen workers |
+| --- | --- |
+| <img src="docs/images/popup-book/solo-t0002.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0002.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0008.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0008.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0014.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0014.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0020.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0020.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0026.jpg" width="400"> | <img src="docs/images/popup-book/crew-t0026.jpg" width="400"> |
+
+One run each, so a data point and not a benchmark. Time, cost, the round by round worker results and the bugs this run found are in [docs/testing.md](docs/testing.md#6-pop-up-book-film-lead-alone-vs-lead-plus-workers).
+
 ## Quick start with Claude Code
 
 **1. Start a worker model.** Any OpenAI-compatible server with tool calling works. On a Mac with llama.cpp:
