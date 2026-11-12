@@ -377,5 +377,6 @@
     ]
   },
   "machine": "Mac Studio M5 Max 128 GB, llama.cpp 0.9.0, Qwen3.8-27B UD-Q4_K_XL, -c 196608 -np 3",
-  "claudeCode": "2.1.322, claude.ai login"
+  "claudeCode": "2.1.322, claude.ai login",
+  "note": "lead.costUsd is Claude Code list price estimate, not a bill"
 }

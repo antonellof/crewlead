@@ -79,14 +79,14 @@ Loaded with `claude --plugin-dir <repo>` in a headless session. `claude plugin v
 
 **Found and fixed: the lead drafted code before delegating.** With boss mode on, a Haiku lead asked to build a Roman numeral module wrote the whole module into three `Write` calls, got three denials, and only then looked up the crewlead tools (Claude Code defers MCP tools behind tool search). A `UserPromptSubmit` hook now tells the lead, when boss mode is on, to delegate and names the tools.
 
-| Run (Haiku lead, Qwen worker) | Lead `Write` attempts | Lead cost | Time | Tests passing |
+| Run (Haiku lead, Qwen worker) | Lead `Write` attempts | Lead output tokens | Time | Tests passing |
 | --- | --- | --- | --- | --- |
-| Before the fix | 3, all denied | $0.0102 | 85.2 s | 27 |
-| After the fix | 0 | $0.0079 | 79.6 s | 30 |
+| Before the fix | 3, all denied | 6,182 | 85.2 s | 27 |
+| After the fix | 0 | 3,400 | 79.6 s | 30 |
 
-Lead cost is `total_cost_usd` as Claude Code reports it. On a claude.ai login this is the list price equivalent (`costBasis: "list"`), not what the account is billed.
+Token counts are the ones the API reports to Claude Code. No dollar figures appear on this page: the runs used a claude.ai login, so nothing was billed per run, and Claude Code's `total_cost_usd` is only an estimate at list prices.
 
-**Setup from inside Claude Code.** In an empty folder, a Haiku lead given only "set up crewlead" loaded the skill, called `setup` with `detect` then `write`, and wrote `crewlead.config.json` with the local server, its 3 slots and thinking off. The worker check passed. 20 to 85 s depending on server load, $0.006 per run. The first version of the skill made the lead write to the user scope (`~/.config/crewlead/`) unasked; the wording now keeps it in the project unless the user asks for all projects.
+**Setup from inside Claude Code.** In an empty folder, a Haiku lead given only "set up crewlead" loaded the skill, called `setup` with `detect` then `write`, and wrote `crewlead.config.json` with the local server, its 3 slots and thinking off. The worker check passed. 20 to 85 s depending on server load, 950 to 1,350 lead output tokens. The first version of the skill made the lead write to the user scope (`~/.config/crewlead/`) unasked; the wording now keeps it in the project unless the user asks for all projects.
 
 **MCP only.** `claude mcp add crewlead -- npx -y github:antonellof/crewlead mcp` shows `Connected` in `claude mcp list`.
 
@@ -94,29 +94,33 @@ Not yet tested: installing through `/plugin marketplace add`, and an interactive
 
 ## 6. Pop-up book film: lead alone vs lead plus workers
 
-A replication of a [community run](https://www.reddit.com/r/Qwen_AI/comments/1xs70ch/) that built a 30-second Three.js film of a pop-up book with four worlds. Same prompt for both arms: [`bench/popup-book/prompt.md`](../bench/popup-book/prompt.md). Lead: Fable 5.2 (`claude-fable-5-2`) in headless Claude Code. One run per arm, run on 2026-11-12.
+A replication of a [community run](https://www.reddit.com/r/Qwen_AI/comments/1xs70ch/) that built a 30-second Three.js film of a pop-up book with four worlds. Same prompt for every run: [`bench/popup-book/prompt.md`](../bench/popup-book/prompt.md). Lead: Fable 5.2 (`claude-fable-5-2`) in headless Claude Code. Run on 2026-11-12.
 
 - **Solo:** Fable writes every file itself.
-- **Crew:** crewlead plugin loaded, boss mode on, three Qwen 3.8 27B workers on the local server, thinking off ([`bench/crewlead.bench.json`](../bench/crewlead.bench.json)).
+- **Crew:** crewlead plugin loaded, boss mode on, three Qwen 3.8 27B workers on the local llama.cpp server, thinking off ([`bench/crewlead.bench.json`](../bench/crewlead.bench.json)).
+- **Crew, run 2:** the same, after the context overflow and max_steps fixes. Nothing else used the llama.cpp server during this run.
 
-Raw results: [`solo`](../bench/popup-book/results/2026-11-12-solo.json), [`crew`](../bench/popup-book/results/2026-11-12-crew.json).
+Raw results: [`solo`](../bench/popup-book/results/2026-11-12-solo.json), [`crew run 1`](../bench/popup-book/results/2026-11-12-crew.json), [`crew run 2`](../bench/popup-book/results/2026-11-12-crew-2.json).
+
+![Lead output tokens and wall time per run](images/popup-book-results.svg)
 
 ### Result
 
-| | Solo | Crew |
-| --- | --- | --- |
-| Wall time | **14:28** | 57:31 |
-| Lead cost (list price) | $5.27 | **$3.66** (-30%) |
-| Lead output tokens | 84,159 | **41,935** (-50%) |
-| Files written by the lead | 19 writes | **0** |
-| Worker tasks | none | 18: 12 done, 4 max_steps, 2 error |
-| Worker tokens (local, free) | none | 71,752 out |
-| Lines in the result | 1,363 (127 of them a Node test harness) | 1,627 |
-| Console errors at 2, 8, 14, 20, 26 s | none | none |
+| | Solo | Crew, run 1 | Crew, run 2 |
+| --- | --- | --- | --- |
+| Wall time | **14:28** | 57:31 | 38:28 |
+| Lead output tokens (thinking included) | 84,159 | **41,935** | 62,771 |
+| Lead thinking tokens | 47,129 | 16,694 | **12,871** |
+| Lead cached input read | 1,175,700 | 1,416,681 | 1,442,987 |
+| Files written by the lead | 19 writes | **0** | **0** |
+| Worker tasks | none | 18: 12 done, 4 max_steps, 2 error | 15: **13 done**, 2 max_steps, 0 error |
+| Worker output tokens (local) | none | 71,752 | 55,565 |
+| Lines in the result | 1,363 (127 of them a Node test harness) | 1,627 | 2,012 |
+| Console errors at 2, 8, 14, 20, 26 s | none | none | none |
 
-The lead cost is `total_cost_usd` as Claude Code reports it. On a claude.ai login it is the list price equivalent, not a bill.
+All token counts are as the API reports them; wall time is measured by `bench/run.js`. There are no dollar figures: these runs used a claude.ai login, so nothing was billed per run.
 
-**Cheaper, but much slower.** The crew run cut the lead's cost by 30% and its output tokens by half, and the lead never wrote a file. It took four times as long. The community post reported the crew arm as 5x cheaper and 2x faster; this run does not reproduce that. Part of the gap is crewlead bugs found by this run (below). The crew time also includes a few minutes where other tests shared the same llama.cpp server.
+**What the lead saved, and what it cost in time.** With workers, Fable wrote no file and produced 25% to 50% fewer output tokens. The crew runs read more cached input, because they last longer and go back and forth with the workers. They were also much slower: 2.7 to 4 times the solo wall time. The community post reported the crew arm as both cheaper and 2x faster; these runs do not reproduce the speed. The fixes after run 1 cut the crew time from 57:31 to 38:28 and took the first batch from 1 of 6 done to 6 of 7. Run 1 also shared the server with other tests for a few minutes.
 
 ### Round by round (crew)
 
@@ -129,25 +133,36 @@ The lead cost is `total_cost_usd` as Claude Code reports it. On a claude.ai logi
 
 The same shape as the community run: a rough first round, then a clean one after the lead narrowed the briefs.
 
-### Bugs this run found
+Run 2, after the fixes:
 
-1. **Context overflow is fatal.** Two workers grew past the 65,536 token slot (68,069 and 65,617 tokens) and llama.cpp returned `exceed_context_size_error`. Crewlead reported `error` and the work was lost. The worker loop never trims old tool output.
-2. **`max_steps` says nothing.** Four tasks used all 60 steps and the result was "(the worker gave no report)" with no files changed. The lead cannot tell a loop from slow progress.
-3. **No progress while a batch runs.** Round 1 took 33 minutes and the lead saw only heartbeats. The slowest task holds the whole batch.
+| Round | Tasks | Done | Batch time | What happened |
+| --- | --- | --- | --- | --- |
+| 1 | paper, book, main, castle, jungle, port, peaks | 6 of 7 | 17:43 | No context errors. port wrote its file, then ran 52 shell commands re-checking it and hit 60 steps |
+| 2 | preview-tool | 1 of 1 | 1:30 | A small script the lead used to inspect the scene |
+| 3 | camera-fix, castle-fix, jungle-fix, port-fix, peaks-fix | 4 of 5 | 9:07 | castle-fix finished on its 60th step after the 3-turns-left warning; jungle-fix ran 55 commands and hit 60 steps |
+| 4 | camera-keys | 1 of 1 | 0:35 | |
+| 5 | cleanup | 1 of 1 | 0:07 | |
+
+### Bugs these runs found
+
+1. **Context overflow was fatal** (run 1). Two workers grew past the 65,536 token slot and the work was lost. Fixed: workers drop old tool output and old file bodies and retry, or do it early when `contextTokens` is set. Run 2 had no context errors.
+2. **`max_steps` said nothing** (run 1). Fixed: the result lists tool calls, files written, the last call and the last message. In run 2 this is how the next problem showed up.
+3. **Workers keep running commands after the work is done** (run 2). port, castle-fix and jungle-fix used 52 to 56 shell commands each. Fixed after run 2 with `maxRunsWithoutChange`; not yet measured in a full run.
+4. **No progress while a batch runs.** Still open. The slowest task holds the whole batch and the lead sees only heartbeats.
 
 ### Screenshots
 
 Taken with `bench/screenshot.js` (headless Chrome, 1280x720, `?t=` seek).
 
-| t | Solo (Fable alone) | Crew (Fable + 3 local Qwen) |
-| --- | --- | --- |
-| 2 s | ![](images/popup-book/solo-t0002.jpg) | ![](images/popup-book/crew-t0002.jpg) |
-| 8 s | ![](images/popup-book/solo-t0008.jpg) | ![](images/popup-book/crew-t0008.jpg) |
-| 14 s | ![](images/popup-book/solo-t0014.jpg) | ![](images/popup-book/crew-t0014.jpg) |
-| 20 s | ![](images/popup-book/solo-t0020.jpg) | ![](images/popup-book/crew-t0020.jpg) |
-| 26 s | ![](images/popup-book/solo-t0026.jpg) | ![](images/popup-book/crew-t0026.jpg) |
+| t | Solo (Fable alone) | Crew, run 1 | Crew, run 2 |
+| --- | --- | --- | --- |
+| 2 s | ![](images/popup-book/solo-t0002.jpg) | ![](images/popup-book/crew-t0002.jpg) | ![](images/popup-book/crew2-t0002.jpg) |
+| 8 s | ![](images/popup-book/solo-t0008.jpg) | ![](images/popup-book/crew-t0008.jpg) | ![](images/popup-book/crew2-t0008.jpg) |
+| 14 s | ![](images/popup-book/solo-t0014.jpg) | ![](images/popup-book/crew-t0014.jpg) | ![](images/popup-book/crew2-t0014.jpg) |
+| 20 s | ![](images/popup-book/solo-t0020.jpg) | ![](images/popup-book/crew-t0020.jpg) | ![](images/popup-book/crew2-t0020.jpg) |
+| 26 s | ![](images/popup-book/solo-t0026.jpg) | ![](images/popup-book/crew-t0026.jpg) | ![](images/popup-book/crew2-t0026.jpg) |
 
-Both films show the book, all four worlds and the paper look. The solo film is more detailed (a tiger and a parrot in the jungle, a snowman on the peaks) and keeps the paper-coloured backdrop. The crew film is plainer, uses a dark backdrop, and has a few poles passing through boats and clouds.
+All three films show the book, all four worlds and the paper look. The solo film is more detailed (a tiger and a parrot in the jungle, a snowman on the peaks) and keeps the paper-coloured backdrop. Crew run 1 is plainer, uses a dark backdrop, and has a few poles passing through boats and clouds. Crew run 2 keeps the paper backdrop and its scenes hold together better, with simpler shapes than the solo film.
 
 ## Not tested yet
 
