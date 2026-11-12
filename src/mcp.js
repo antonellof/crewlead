@@ -4,6 +4,7 @@ import { createInterface } from "node:readline";
 import { describeWorkers } from "./config.js";
 import { Pool } from "./pool.js";
 import { GUIDELINES, TOOLS } from "./schema.js";
+import { runSetup } from "./setup.js";
 
 const PROTOCOL_VERSION = "2025-06-18";
 
@@ -23,7 +24,16 @@ export function startMcpServer({ version = "0.0.0", input = process.stdin, outpu
   async function callTool(name, args, signal, progress) {
     if (name === "list_workers") {
       const p = getPool();
-      return text({ configSource: p.config.source, workers: describeWorkers(p.config) });
+      return text({
+        configSource: p.config.source,
+        workers: describeWorkers(p.config),
+        ...(p.config.source === "defaults" ? { hint: "No config file found. Run the setup tool with action 'detect'." } : {}),
+      });
+    }
+    if (name === "setup") {
+      const r = await runSetup(args, cwd);
+      if (args.action === "write") pool = null; // pick up the new config on the next call
+      return text(r);
     }
     if (name === "delegate") {
       const r = await getPool().delegate({ id: "task-1", ...args }, { signal, onEvent: progress });

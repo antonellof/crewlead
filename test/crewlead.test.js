@@ -8,6 +8,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { normalize } from "../src/config.js";
 import { Pool } from "../src/pool.js";
+import { detectServers, suggestConfig, writeConfig } from "../src/setup.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -15,6 +16,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 async function mockLLM(script) {
   const state = { requests: [], active: 0, peak: 0 };
   const server = createServer((req, res) => {
+    if (req.method === "GET" && req.url.endsWith("/models")) {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ data: [{ id: "mock-qwen3" }] }));
+    }
+    if (req.method === "GET" && req.url === "/props") {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ total_slots: 4 }));
+    }
     let body = "";
     req.on("data", (d) => (body += d));
     req.on("end", async () => {
@@ -206,7 +215,7 @@ test("MCP server: initialize, list tools, call delegate", async () => {
   assert.equal(init.result.serverInfo.name, "crewlead");
   child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
   const list = await rpc(2, "tools/list", {});
-  assert.deepEqual(list.result.tools.map((t) => t.name), ["delegate", "delegate_batch", "list_workers"]);
+  assert.deepEqual(list.result.tools.map((t) => t.name), ["delegate", "delegate_batch", "list_workers", "setup"]);
   const res = await rpc(3, "tools/call", { name: "delegate", arguments: { task: "write hello" } });
   const payload = JSON.parse(res.result.content[0].text);
   child.kill();
@@ -244,4 +253,76 @@ test("boss-mode hook tells the lead to delegate on UserPromptSubmit", async () =
   assert.equal(out.hookEventName, "UserPromptSubmit");
   assert.equal(out.permissionDecision, undefined);
   assert.match(out.additionalContext, /mcp__plugin_crewlead_crewlead__delegate_batch/);
+});
+
+test("setup: detect a server, suggest a config with fallback, refuse keys and overwrites", async () => {
+  const llm = await mockLLM(() => say("ok"));
+  const servers = await detectServers({ urls: [llm.url] });
+  llm.close();
+  assert.deepEqual(servers[0], { kind: "llamacpp", baseUrl: llm.url, models: ["mock-qwen3"], slots: 4 });
+
+  const localOnly = suggestConfig([servers[0]], {});
+  assert.equal(localOnly.defaultWorker, "builder");
+  assert.equal(localOnly.providers.local.maxConcurrency, 4);
+  assert.deepEqual(localOnly.workers.builder.extraBody, { chat_template_kwargs: { enable_thinking: false } });
+  assert.equal(localOnly.providers.openrouter, undefined);
+
+  const withRemote = suggestConfig([servers[0]], { OPENROUTER_API_KEY: "x" });
+  assert.equal(withRemote.workers.builder.fallback, "builder-remote");
+  assert.equal(withRemote.providers.openrouter.apiKeyEnv, "OPENROUTER_API_KEY");
+  assert.ok(!JSON.stringify(withRemote).includes('"x"'), "the key value never ends up in the config");
+
+  const remoteOnly = suggestConfig([], { OPENROUTER_API_KEY: "x" });
+  assert.equal(remoteOnly.workers.builder.provider, "openrouter");
+  assert.equal(suggestConfig([], {}), null);
+
+  const cwd = tmp();
+  assert.throws(() => writeConfig({ ...localOnly, providers: { local: { ...localOnly.providers.local, apiKey: "sk" } } }, { cwd }), /apiKey/);
+  const file = writeConfig(localOnly, { cwd });
+  assert.equal(file, join(cwd, "crewlead.config.json"));
+  assert.throws(() => writeConfig(localOnly, { cwd }), /already exists/);
+  writeConfig(localOnly, { cwd, overwrite: true });
+  const userFile = writeConfig(localOnly, { scope: "user", env: { XDG_CONFIG_HOME: join(cwd, "xdg") } });
+  assert.equal(userFile, join(cwd, "xdg", "crewlead", "config.json"));
+});
+
+test("MCP setup tool: detect, write, then the pool uses the new config", async () => {
+  const llm = await mockLLM((body) => (body.tools?.some((t) => t.function.name === "ping") ? call("ping", {}) : say("ok")));
+  const cwd = tmp();
+  const child = spawn("node", [join(root, "bin/crewlead.js"), "mcp"], { cwd, env: { PATH: process.env.PATH, HOME: cwd }, stdio: ["pipe", "pipe", "inherit"] });
+  const replies = new Map();
+  let buf = "";
+  child.stdout.on("data", (d) => {
+    buf += d;
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const msg = JSON.parse(buf.slice(0, i));
+      buf = buf.slice(i + 1);
+      if (msg.id !== undefined) replies.get(msg.id)?.(msg);
+    }
+  });
+  const rpc = (id, name, args) => new Promise((resolve) => {
+    replies.set(id, (m) => resolve(JSON.parse(m.result.content[0].text)));
+    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: args } }) + "\n");
+  });
+
+  const before = await rpc(1, "list_workers", {});
+  assert.equal(before.configSource, "defaults");
+  assert.match(before.hint, /setup/);
+
+  const detected = await rpc(2, "setup", { action: "detect", urls: [llm.url] });
+  assert.equal(detected.servers[0].baseUrl, llm.url);
+  assert.equal(detected.keys.OPENROUTER_API_KEY, false);
+  assert.equal(detected.suggestedConfig.providers.local.baseUrl, llm.url);
+
+  const wrote = await rpc(3, "setup", { action: "write", config: detected.suggestedConfig });
+  assert.equal(wrote.wrote, join(cwd, "crewlead.config.json"));
+  assert.equal(wrote.activeConfig, wrote.wrote);
+  assert.equal(wrote.check[0].ok, true);
+
+  const after = await rpc(4, "list_workers", {});
+  assert.equal(after.configSource, join(cwd, "crewlead.config.json"));
+  assert.equal(after.workers[0].model, "mock-qwen3");
+  child.kill();
+  llm.close();
 });

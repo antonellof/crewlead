@@ -58,6 +58,36 @@ export const TOOLS = [
     description: "List the configured worker profiles: name, provider, model, concurrency, fallback.",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "setup",
+    description:
+      "Set up crewlead's workers. Use when the user asks to set up or configure crewlead, or when list_workers shows configSource 'defaults'. " +
+      "Steps: 'detect' finds local model servers (llama.cpp, Ollama, LM Studio, vLLM), reports which remote API key variables are set (never their values) and returns a suggested config. " +
+      "Show the suggestion to the user, then 'write' it (omit 'config' to write the suggestion as is). 'check' sends a tool-calling test to every worker. " +
+      "API keys never go in the config: set apiKeyEnv to the name of an environment variable.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["detect", "write", "check"] },
+        urls: {
+          type: "array",
+          items: { type: "string" },
+          description: "detect: extra base URLs to probe, ending in /v1, for servers on non-default ports.",
+        },
+        config: {
+          type: "object",
+          description: "write: the config to write ({providers, workers, defaultWorker}). Omit to write the suggestion from a fresh detect.",
+        },
+        scope: {
+          type: "string",
+          enum: ["project", "user"],
+          description: "write: 'project' (default) writes ./crewlead.config.json. 'user' writes ~/.config/crewlead/config.json for all projects: use it only when the user asks for that.",
+        },
+        overwrite: { type: "boolean", description: "write: replace an existing config file. Default false." },
+      },
+      required: ["action"],
+    },
+  },
 ];
 
 export const GUIDELINES = `You are the lead. Workers are cheaper models that build what you specify.

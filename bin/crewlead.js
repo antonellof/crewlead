@@ -3,9 +3,9 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync, rmSync } from "node
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describeWorkers, loadConfig } from "../src/config.js";
-import { chat } from "../src/llm.js";
 import { startMcpServer } from "../src/mcp.js";
 import { Pool } from "../src/pool.js";
+import { checkWorkers, detectServers, keysPresent, suggestConfig, writeConfig } from "../src/setup.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -16,7 +16,7 @@ One lead model plans. Cheap workers build.
 
 Usage:
   crewlead mcp                 Start the MCP server on stdio (default)
-  crewlead init                Write crewlead.config.json in this directory
+  crewlead init [--user] [--force] [--url <base url>]\n                               Find local model servers and write a config
   crewlead workers             Show the configured workers
   crewlead doctor              Send a test request to every worker
   crewlead run "<task>" [--worker name] [--verify "cmd"] [--owns a,b]
@@ -34,13 +34,23 @@ switch (cmd) {
     break;
 
   case "init": {
-    const target = join(process.cwd(), "crewlead.config.json");
-    if (existsSync(target)) {
-      console.error(`${target} already exists`);
+    // crewlead init [--user] [--force] [--url http://host:port/v1]
+    const scope = rest.includes("--user") ? "user" : "project";
+    const servers = await detectServers({ urls: flag("url") ? [flag("url")] : [] });
+    for (const s of servers) console.log(`found ${s.kind} at ${s.baseUrl}: ${s.models.join(", ") || "no models"}${s.slots ? ` (${s.slots} slots)` : ""}`);
+    for (const [k, set] of Object.entries(keysPresent())) console.log(`${k}: ${set ? "set" : "not set"}`);
+    let raw = suggestConfig(servers);
+    if (!raw) {
+      console.log("no local server found and no remote key set: writing the example config, edit it before use");
+      raw = JSON.parse(readFileSync(join(root, "crewlead.config.example.json"), "utf8"));
+    }
+    try {
+      console.log(`wrote ${writeConfig(raw, { scope, overwrite: rest.includes("--force") })}`);
+    } catch (err) {
+      console.error(err.message.replace("Pass overwrite: true", "Use --force"));
       process.exit(1);
     }
-    writeFileSync(target, readFileSync(join(root, "crewlead.config.example.json")));
-    console.log(`wrote ${target}`);
+    console.log("next: crewlead doctor");
     break;
   }
 
@@ -54,26 +64,12 @@ switch (cmd) {
   case "doctor": {
     const config = loadConfig();
     console.log(`config: ${config.source}`);
-    let failed = 0;
-    for (const [name, worker] of Object.entries(config.workers)) {
-      const provider = config.providers[worker.provider];
-      const t = Date.now();
-      try {
-        const res = await chat({
-          provider,
-          worker: { ...worker, maxTokens: 256, requestTimeoutMs: 60_000 },
-          messages: [{ role: "user", content: "Call the ping tool." }],
-          tools: [{ type: "function", function: { name: "ping", description: "Health check", parameters: { type: "object", properties: {} } } }],
-        });
-        const toolOk = (res.message.tool_calls ?? []).length > 0;
-        console.log(`ok    ${name}  ${worker.model} @ ${provider.baseUrl}  ${Date.now() - t} ms  tool calling: ${toolOk ? "yes" : "NO (worker cannot edit files)"}`);
-        if (!toolOk) failed++;
-      } catch (err) {
-        failed++;
-        console.log(`FAIL  ${name}  ${worker.model} @ ${provider.baseUrl}  ${err.message}`);
-      }
+    const results = await checkWorkers(config);
+    for (const r of results) {
+      if (r.error) console.log(`FAIL  ${r.name}  ${r.model} @ ${r.baseUrl}  ${r.error}`);
+      else console.log(`ok    ${r.name}  ${r.model} @ ${r.baseUrl}  ${r.ms} ms  tool calling: ${r.toolCalling ? "yes" : "NO (worker cannot edit files)"}`);
     }
-    process.exit(failed ? 1 : 0);
+    process.exit(results.every((r) => r.ok) ? 0 : 1);
     break;
   }
 

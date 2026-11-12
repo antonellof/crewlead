@@ -1,6 +1,6 @@
 ---
 name: crewlead
-description: Delegate implementation work to cheaper worker models through the crewlead delegate and delegate_batch tools. Use when the user asks to build, implement, scaffold or refactor code and crewlead tools are available, when the user mentions workers, builders, local models or boss mode, or when a write is blocked by crewlead boss mode.
+description: Delegate implementation work to cheaper worker models through the crewlead delegate and delegate_batch tools, and set up crewlead with its setup tool. Use when the user asks to set up or configure crewlead or its workers, when the user asks to build, implement, scaffold or refactor code and crewlead tools are available, when the user mentions workers, builders, local models or boss mode, or when a write is blocked by crewlead boss mode.
 ---
 
 # Crewlead: you lead, workers build
@@ -19,6 +19,16 @@ You are the lead engineer. Worker models (local or remote, set in the user's con
    - `verify`: a command that exits 0 when the work is right (a test file, a type check, a lint run).
 5. Read the results. Each one has a status, a short report, changed files and the verify result. Check the integration yourself: run the full test suite or open the diff.
 6. Fix by delegating again. Quote the exact error and name the exact change. Retries on workers cost little.
+
+## Setup
+
+When the user asks to set up crewlead, or `list_workers` reports `configSource: "defaults"`:
+
+1. Call `setup` with `action: "detect"`. Show the user the servers found, which key variables are set, and the suggested config.
+2. If it looks right, call `setup` with `action: "write"`. Omit `config` to write the suggestion. Leave `scope` out: it writes to this project. Use `scope: "user"` only when the user asks for a setup that applies to all projects. Pass `overwrite: true` only if the user agrees to replace an existing file.
+3. Report the check result. A worker with `toolCalling: false` cannot edit files.
+
+If nothing is found, tell the user to start a local server or export a key such as `OPENROUTER_API_KEY`, then detect again. Never put an API key in the config.
 
 ## Rules
 

@@ -4,6 +4,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { describeWorkers } from "../src/config.js";
 import { Pool } from "../src/pool.js";
 import { GUIDELINES, TOOLS } from "../src/schema.js";
+import { runSetup } from "../src/setup.js";
 
 export default function (pi: ExtensionAPI) {
   const pools = new Map<string, Pool>();
@@ -53,6 +54,18 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, _params, _signal, _onUpdate, ctx) {
       const pool = poolFor(ctx.cwd);
       return text({ configSource: pool.config.source, workers: describeWorkers(pool.config) });
+    },
+  });
+
+  pi.registerTool({
+    name: "setup",
+    label: "Set up crewlead",
+    description: schema("setup").description,
+    parameters: schema("setup").inputSchema as any,
+    async execute(_id, params: any, _signal, _onUpdate, ctx) {
+      const result = await runSetup(params, ctx.cwd);
+      if (params.action === "write") pools.delete(ctx.cwd); // reload the new config
+      return text(result);
     },
   });
 
