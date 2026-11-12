@@ -1,0 +1,36 @@
+{
+  "providers": {
+    "local": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "maxConcurrency": 3
+    },
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "maxConcurrency": 8,
+      "headers": {
+        "HTTP-Referer": "https://github.com/antonellof/capomastro",
+        "X-Title": "capomastro"
+      }
+    }
+  },
+  "workers": {
+    "builder": {
+      "description": "Local Qwen on this machine. Free retries. Falls back to OpenRouter when the server is down.",
+      "provider": "local",
+      "model": "qwen3.8-27b",
+      "temperature": 0.2,
+      "maxSteps": 40,
+      "verifyRetries": 3,
+      "fallback": "builder-remote"
+    },
+    "builder-remote": {
+      "description": "Same model family on OpenRouter. Use for large batches or when no local GPU is free.",
+      "provider": "openrouter",
+      "model": "qwen/qwen3.8-27b",
+      "temperature": 0.2,
+      "maxSteps": 40
+    }
+  },
+  "defaultWorker": "builder"
+}

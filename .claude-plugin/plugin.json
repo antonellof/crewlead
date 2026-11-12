@@ -1,0 +1,10 @@
+{
+  "name": "capomastro",
+  "version": "0.1.0",
+  "description": "One lead model plans and reviews. Cheap local or remote workers write the code in parallel.",
+  "author": { "name": "Antonello Fratepietro", "url": "https://github.com/antonellof" },
+  "homepage": "https://github.com/antonellof/capomastro",
+  "repository": "https://github.com/antonellof/capomastro",
+  "license": "MIT",
+  "keywords": ["multi-llm", "orchestration", "local-models", "openrouter", "subagents"]
+}

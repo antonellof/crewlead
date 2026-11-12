@@ -1,0 +1,16 @@
+# Add this to ~/.codex/config.toml
+
+[mcp_servers.capomastro]
+command = "node"
+args = ["/absolute/path/to/capomastro/bin/capomastro.js", "mcp"]
+# Without a clone:
+# command = "npx"
+# args = ["-y", "github:antonellof/capomastro", "mcp"]
+startup_timeout_sec = 30
+# delegate_batch returns when every worker is done. Give it room.
+tool_timeout_sec = 1800
+
+# Workers come from capomastro.config.json in the project, or from
+# ~/.config/capomastro/config.json. Keys for remote providers go here:
+[mcp_servers.capomastro.env]
+OPENROUTER_API_KEY = "sk-or-..."
