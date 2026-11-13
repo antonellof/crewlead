@@ -94,34 +94,35 @@ Not yet tested: installing through `/plugin marketplace add`, and an interactive
 
 ## 6. Pop-up book film: lead alone vs lead plus workers
 
-A replication of a [community run](https://www.reddit.com/r/Qwen_AI/comments/1xs70ch/) that built a 30-second Three.js film of a pop-up book with four worlds. Same prompt for every run: [`bench/popup-book/prompt.md`](../bench/popup-book/prompt.md). Lead: Fable 5.2 (`claude-fable-5-2`) in headless Claude Code. Run on 2026-11-12.
+A replication of a [community run](https://www.reddit.com/r/Qwen_AI/comments/1xs70ch/) that built a 30-second Three.js film of a pop-up book with four worlds. Same prompt for every run: [`bench/popup-book/prompt.md`](../bench/popup-book/prompt.md). Lead: Fable 5.2 (`claude-fable-5-2`) in headless Claude Code. Runs 1 to 3 and solo on 2026-11-12, run 4 on 2026-11-13.
 
 - **Solo:** Fable writes every file itself.
 - **Crew:** crewlead plugin loaded, boss mode on, three Qwen 3.8 27B workers on the local llama.cpp server, thinking off ([`bench/crewlead.bench.json`](../bench/crewlead.bench.json)).
 - **Crew, run 2:** the same, after the context overflow and max_steps fixes. Nothing else used the llama.cpp server during this run.
 - **Crew, run 3:** the same, plus the cap on shell commands without a file change.
+- **Crew, run 4:** every fix: the `node:http` client without the 300 s limit, and the `run` tool taken away after three refusals. The idle MLX server was stopped first.
 
-Raw results: [`solo`](../bench/popup-book/results/2026-11-12-solo.json), [`crew run 1`](../bench/popup-book/results/2026-11-12-crew.json), [`crew run 2`](../bench/popup-book/results/2026-11-12-crew-2.json), [`crew run 3`](../bench/popup-book/results/2026-11-12-crew-3.json).
+Raw results: [`solo`](../bench/popup-book/results/2026-11-12-solo.json), [`crew run 1`](../bench/popup-book/results/2026-11-12-crew.json), [`crew run 2`](../bench/popup-book/results/2026-11-12-crew-2.json), [`crew run 3`](../bench/popup-book/results/2026-11-12-crew-3.json), [`crew run 4`](../bench/popup-book/results/2026-11-13-crew-4.json).
 
 ![Lead output tokens and wall time per run](images/popup-book-results.svg)
 
 ### Result
 
-| | Solo | Crew, run 1 | Crew, run 2 | Crew, run 3 |
-| --- | --- | --- | --- | --- |
-| Wall time | **14:28** | 57:31 | 38:28 | 76:13 |
-| Lead output tokens (thinking included) | 84,159 | 41,935 | 62,771 | **40,225** |
-| Lead thinking tokens | 47,129 | 16,694 | **12,871** | 15,421 |
-| Lead cached input read | 1,175,700 | 1,416,681 | 1,442,987 | 1,420,816 |
-| Files written by the lead | 19 writes | **0** | **0** | **0** |
-| Worker tasks | none | 18: 12 done, 4 max_steps, 2 error | 15: **13 done**, 2 max_steps, 0 error | 16: 12 done, 2 max_steps, 2 error |
-| Worker output tokens (local) | none | 71,752 | 55,565 | 78,857 |
-| Lines of film code | 1,236 | 1,627 | 2,012 | 2,296 |
-| Console errors at 2, 8, 14, 20, 26 s | none | none | none | none |
+| | Solo | Crew, run 1 | Crew, run 2 | Crew, run 3 | Crew, run 4 |
+| --- | --- | --- | --- | --- | --- |
+| Wall time | **14:28** | 57:31 | 38:28 | 76:13 | 22:48 |
+| Lead output tokens (thinking included) | 84,159 | 41,935 | 62,771 | 40,225 | **37,019** |
+| Lead thinking tokens | 47,129 | 16,694 | **12,871** | 15,421 | 13,259 |
+| Lead cached input read | 1,175,700 | 1,416,681 | 1,442,987 | 1,420,816 | **825,549** |
+| Files written by the lead | 19 writes | **0** | **0** | **0** | **0** |
+| Worker tasks | none | 18: 12 done, 4 max_steps, 2 error | 15: **13 done**, 2 max_steps, 0 error | 16: 12 done, 2 max_steps, 2 error | 11: **11 done** |
+| Worker output tokens (local) | none | 71,752 | 55,565 | 78,857 | 36,555 |
+| Lines of film code | 1,236 | 1,627 | 2,012 | 2,296 | 1,681 |
+| Console errors at 2, 8, 14, 20, 26 s | none | none | none | none | none |
 
 All token counts are as the API reports them; wall time is measured by `bench/run.js`. There are no dollar figures: these runs used a claude.ai login, so nothing was billed per run.
 
-**What the lead saved, and what it cost in time.** With workers, Fable wrote no file and produced 25% to 50% fewer output tokens. The crew runs read more cached input, because they last longer and go back and forth with the workers. They were also much slower: 2.7 to 5.3 times the solo wall time. The community post reported the crew arm as both cheaper and 2x faster; these runs do not reproduce the speed. The fixes after run 1 cut the crew time from 57:31 to 38:28 and took the first batch from 1 of 6 done to 6 of 7. Run 1 also shared the server with other tests for a few minutes.
+**What the lead saved, and what it cost in time.** With workers, Fable wrote no file and produced 25% to 56% fewer output tokens. Runs 1 to 3 read more cached input than solo, because they lasted longer and went back and forth with the workers; run 4 read 30% less. Every crew run was slower than solo: run 4 took 1.6 times the solo wall time, runs 1 to 3 took 2.7 to 5.3 times. The community post reported the crew arm as both cheaper and 2x faster; these runs do not reproduce the speed. The fixes after run 1 cut the crew time from 57:31 to 38:28 and took the first batch from 1 of 6 done to 6 of 7. Run 1 also shared the server with other tests for a few minutes.
 
 ### Round by round (crew)
 
@@ -155,28 +156,39 @@ Run 3, with the shell cap:
 | 5 | book-fix, castle-fix, paper-camera-fix | 3 of 3 | 2:06 | |
 | 6 | shots2 | 1 of 1 | 1:07 | |
 
+Run 4, with every fix:
+
+| Round | Tasks | Done | Batch time | What happened |
+| --- | --- | --- | --- | --- |
+| 1 | core, paper-book, castle, jungle, port, mountains | 6 of 6 | 13:23 | 5 to 21 steps each, every verify passed. The first clean first round in four runs |
+| 2 | shots | 1 of 1 | 0:41 | A script the lead used to inspect each scene |
+| 3 | fix-book, fix-castle, fix-stage-camera | 3 of 3 | 1:23 | 4 steps each |
+| 4 | shots2 | 1 of 1 | 0:47 | |
+
+In run 4 no worker overflowed its context, reached the step limit, got a shell command refused, or waited more than 300 s for one reply (the longest llama-server request was 288 s). So the run went cleanly, but it did not put the fixes for bugs 3 to 5 under load. With one run per setup, part of the difference from runs 1 to 3 can be the lead planning differently from run to run.
+
 ### Bugs these runs found
 
 1. **Context overflow was fatal** (run 1). Two workers grew past the 65,536 token slot and the work was lost. Fixed: workers drop old tool output and old file bodies and retry, or do it early when `contextTokens` is set. Run 2 had no context errors.
 2. **`max_steps` said nothing** (run 1). Fixed: the result lists tool calls, files written, the last call and the last message. In run 2 this is how the next problem showed up.
-3. **Workers keep running commands after the work is done** (run 2). port, castle-fix and jungle-fix used 52 to 56 shell commands each. Fixed after run 2 with `maxRunsWithoutChange`; not yet measured in a full run.
+3. **Workers keep running commands after the work is done** (run 2). port, castle-fix and jungle-fix used 52 to 56 shell commands each. Fixed after run 2 with `maxRunsWithoutChange`; not triggered in run 4.
 4. **A refusal is not enough** (run 3). core kept calling `run` through 46 refusals. Fixed after run 3: after three refusals in a row the `run` tool is removed until the worker changes a file.
-5. **Long worker turns failed at 300 s** (run 3). Node's `fetch` gives up when a server sends no response headers for 300 s, and a non-streaming completion sends none until it is done. Workers writing large files at about 16 tok/s went past that, and each failure was retried four times as "unreachable", costing up to 20 minutes per task. Fixed after run 3: requests go through `node:http`, only `requestTimeoutMs` applies, and a request that used all of it is not retried. Checked on the real server: two identical 9,000-token requests sent at once; crewlead's client returned all 9,000 tokens after 412 s, plain `fetch` failed after 302 s with `UND_ERR_HEADERS_TIMEOUT`. Not yet measured in a full benchmark run.
+5. **Long worker turns failed at 300 s** (run 3). Node's `fetch` gives up when a server sends no response headers for 300 s, and a non-streaming completion sends none until it is done. Workers writing large files at about 16 tok/s went past that, and each failure was retried four times as "unreachable", costing up to 20 minutes per task. Fixed after run 3: requests go through `node:http`, only `requestTimeoutMs` applies, and a request that used all of it is not retried. Checked on the real server: two identical 9,000-token requests sent at once; crewlead's client returned all 9,000 tokens after 412 s, plain `fetch` failed after 302 s with `UND_ERR_HEADERS_TIMEOUT`. Not triggered in run 4: no reply took more than 288 s.
 6. **No progress while a batch runs.** Still open. The slowest task holds the whole batch and the lead sees only heartbeats.
 
 ### Screenshots
 
 Taken with `bench/screenshot.js` (headless Chrome, 1280x720, `?t=` seek).
 
-| t | Solo (Fable alone) | Crew, run 1 | Crew, run 2 | Crew, run 3 |
-| --- | --- | --- | --- | --- |
-| 2 s | ![](images/popup-book/solo-t0002.jpg) | ![](images/popup-book/crew-t0002.jpg) | ![](images/popup-book/crew2-t0002.jpg) | ![](images/popup-book/crew3-t0002.jpg) |
-| 8 s | ![](images/popup-book/solo-t0008.jpg) | ![](images/popup-book/crew-t0008.jpg) | ![](images/popup-book/crew2-t0008.jpg) | ![](images/popup-book/crew3-t0008.jpg) |
-| 14 s | ![](images/popup-book/solo-t0014.jpg) | ![](images/popup-book/crew-t0014.jpg) | ![](images/popup-book/crew2-t0014.jpg) | ![](images/popup-book/crew3-t0014.jpg) |
-| 20 s | ![](images/popup-book/solo-t0020.jpg) | ![](images/popup-book/crew-t0020.jpg) | ![](images/popup-book/crew2-t0020.jpg) | ![](images/popup-book/crew3-t0020.jpg) |
-| 26 s | ![](images/popup-book/solo-t0026.jpg) | ![](images/popup-book/crew-t0026.jpg) | ![](images/popup-book/crew2-t0026.jpg) | ![](images/popup-book/crew3-t0026.jpg) |
+| t | Solo (Fable alone) | Crew, run 1 | Crew, run 2 | Crew, run 3 | Crew, run 4 |
+| --- | --- | --- | --- | --- | --- |
+| 2 s | ![](images/popup-book/solo-t0002.jpg) | ![](images/popup-book/crew-t0002.jpg) | ![](images/popup-book/crew2-t0002.jpg) | ![](images/popup-book/crew3-t0002.jpg) | ![](images/popup-book/crew4-t0002.jpg) |
+| 8 s | ![](images/popup-book/solo-t0008.jpg) | ![](images/popup-book/crew-t0008.jpg) | ![](images/popup-book/crew2-t0008.jpg) | ![](images/popup-book/crew3-t0008.jpg) | ![](images/popup-book/crew4-t0008.jpg) |
+| 14 s | ![](images/popup-book/solo-t0014.jpg) | ![](images/popup-book/crew-t0014.jpg) | ![](images/popup-book/crew2-t0014.jpg) | ![](images/popup-book/crew3-t0014.jpg) | ![](images/popup-book/crew4-t0014.jpg) |
+| 20 s | ![](images/popup-book/solo-t0020.jpg) | ![](images/popup-book/crew-t0020.jpg) | ![](images/popup-book/crew2-t0020.jpg) | ![](images/popup-book/crew3-t0020.jpg) | ![](images/popup-book/crew4-t0020.jpg) |
+| 26 s | ![](images/popup-book/solo-t0026.jpg) | ![](images/popup-book/crew-t0026.jpg) | ![](images/popup-book/crew2-t0026.jpg) | ![](images/popup-book/crew3-t0026.jpg) | ![](images/popup-book/crew4-t0026.jpg) |
 
-All four films show the book, all four worlds and the paper look. The solo film is more detailed (a tiger and a parrot in the jungle, a snowman on the peaks) and keeps the paper-coloured backdrop. Crew run 1 is plainer, uses a dark backdrop, and has a few poles passing through boats and clouds. Crew run 2 keeps the paper backdrop and its scenes hold together better, with simpler shapes than the solo film. Crew run 3 frames each world closer and has the most detail of the crew runs (a waterfall and a bird in the jungle, figures in the boats); the lead had a worker write a script to inspect each scene before the last round of fixes.
+All five films show the book, all four worlds and the paper look. The solo film is more detailed (a tiger and a parrot in the jungle, a snowman on the peaks) and keeps the paper-coloured backdrop. Crew run 1 is plainer, uses a dark backdrop, and has a few poles passing through boats and clouds. Crew run 2 keeps the paper backdrop and its scenes hold together better, with simpler shapes than the solo film. Crew run 3 frames each world closer and has the most detail of the crew runs (a waterfall and a bird in the jungle, figures in the boats); the lead had a worker write a script to inspect each scene before the last round of fixes. Crew run 4 is close to run 3 in detail (a waterfall and a bird in the jungle, a lighthouse with a beam at the port, falling snow on the peaks) with the shortest code of the crew runs; the lead's own notes list a castle path that does not show and a few stray lines on the jungle backdrop.
 
 ## 7. Mac servers: llama.cpp vs MLX
 

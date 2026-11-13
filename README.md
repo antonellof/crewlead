@@ -47,17 +47,17 @@ The same prompt ([`bench/popup-book`](bench/popup-book/prompt.md)) built in Clau
 
 | Fable alone | Fable + 3 local Qwen workers |
 | --- | --- |
-| <img src="docs/images/popup-book/solo-t0002.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0002.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0008.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0008.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0014.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0014.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0020.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0020.jpg" width="400"> |
-| <img src="docs/images/popup-book/solo-t0026.jpg" width="400"> | <img src="docs/images/popup-book/crew2-t0026.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0002.jpg" width="400"> | <img src="docs/images/popup-book/crew4-t0002.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0008.jpg" width="400"> | <img src="docs/images/popup-book/crew4-t0008.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0014.jpg" width="400"> | <img src="docs/images/popup-book/crew4-t0014.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0020.jpg" width="400"> | <img src="docs/images/popup-book/crew4-t0020.jpg" width="400"> |
+| <img src="docs/images/popup-book/solo-t0026.jpg" width="400"> | <img src="docs/images/popup-book/crew4-t0026.jpg" width="400"> |
 
 <p align="center">
-  <img src="docs/images/popup-book-results.svg" width="820" alt="Lead output tokens in thousands: Fable alone 84.2, crew run 1 41.9, crew run 2 62.8, crew run 3 40.2. Wall time in minutes: 14.5, 57.5, 38.5, 76.2.">
+  <img src="docs/images/popup-book-results.svg" width="820" alt="Lead output tokens in thousands: Fable alone 84.2, crew run 1 41.9, crew run 2 62.8, crew run 3 40.2, crew run 4 37.0. Wall time in minutes: 14.5, 57.5, 38.5, 76.2, 22.8.">
 </p>
 
-With workers the lead wrote no file and produced fewer output tokens, but the whole run took longer. One run each, so data points and not a benchmark. Token counts are as the API reports them; there are no dollar figures because these runs were not billed per run. Rounds, worker results and the bugs these runs found: [docs/testing.md](docs/testing.md#6-pop-up-book-film-lead-alone-vs-lead-plus-workers).
+With workers the lead wrote no file and produced fewer output tokens, but the whole run took longer. The right column is crew run 4, the first with every fix: 11 of 11 worker tasks done, 37,019 lead output tokens against 84,159 alone, 22:48 against 14:28. One run each, so data points and not a benchmark. Token counts are as the API reports them; there are no dollar figures because these runs were not billed per run. Rounds, worker results and the bugs these runs found: [docs/testing.md](docs/testing.md#6-pop-up-book-film-lead-alone-vs-lead-plus-workers).
 
 ## Quick start with Claude Code
 
