@@ -176,6 +176,21 @@ In run 4 no worker overflowed its context, reached the step limit, got a shell c
 5. **Long worker turns failed at 300 s** (run 3). Node's `fetch` gives up when a server sends no response headers for 300 s, and a non-streaming completion sends none until it is done. Workers writing large files at about 16 tok/s went past that, and each failure was retried four times as "unreachable", costing up to 20 minutes per task. Fixed after run 3: requests go through `node:http`, only `requestTimeoutMs` applies, and a request that used all of it is not retried. Checked on the real server: two identical 9,000-token requests sent at once; crewlead's client returned all 9,000 tokens after 412 s, plain `fetch` failed after 302 s with `UND_ERR_HEADERS_TIMEOUT`. Not triggered in run 4: no reply took more than 288 s.
 6. **No progress while a batch runs.** Still open. The slowest task holds the whole batch and the lead sees only heartbeats.
 
+### Video
+
+![Solo and crew run 4 side by side](images/popup-book/side-by-side.gif)
+
+[Full quality MP4](images/popup-book/side-by-side.mp4), 24 fps. Recorded with [`bench/record.js`](../bench/record.js): it replaces the page clock (`performance.now`, `Date.now`, `requestAnimationFrame`) before the app loads and steps it one frame at a time, so every frame is rendered at its exact film time and the two films line up frame for frame. Both apps rendered all 720 frames with no page errors. Each side was recorded at 1280x720, then scaled and joined:
+
+```
+node bench/record.js bench/out/popup-book-solo-1/app bench/out/rec-solo
+node bench/record.js bench/out/popup-book-crew-4/app bench/out/rec-crew4
+ffmpeg -framerate 24 -i bench/out/rec-solo/f%05d.png -framerate 24 -i bench/out/rec-crew4/f%05d.png \
+  -filter_complex "[0]scale=960:540[a];[1]scale=960:540[b];[a][b]hstack" -c:v libx264 -crf 26 -pix_fmt yuv420p side-by-side.mp4
+```
+
+The label strip on top was a separate image stacked above the video.
+
 ### Screenshots
 
 Taken with `bench/screenshot.js` (headless Chrome, 1280x720, `?t=` seek).
